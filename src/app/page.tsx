@@ -315,7 +315,7 @@ function Showcase() {
             <div className="relative aspect-[16/9] overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBNFcBtZuhV6sAxEFLxWWD34QFK1dyQUgQTkM_17uLiQDgUPTJmH33Y263DTFRmpFzOxO04FQCNkq-9tseoCFS5-50dRhdyFUafGUWtOPB7i-wKFHnGKQcZ4pkL9tP8rK5XW2XXdkWRs-Ymha8WxOmEDevwy-wAdIeQQmE5E1C8s4uPo2NgbNZ5YZ5BZjZx9tI49EVeCkj9u-_gDwdVj5z_Xf6vKi-Xqyl_BfMsvS72A_7rgUHPe1nojhSp56Op3bZsh6pJHcSHQ"
+                src="https://api.microlink.io/?url=https://brewpilot.vercel.app&screenshot=true&meta=false&embed=screenshot.url"
                 alt="Brewpilot - AI coffee brewing assistant"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
