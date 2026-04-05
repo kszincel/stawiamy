@@ -4,8 +4,8 @@ import { stitch } from "@google/stitch-sdk";
 export const maxDuration = 300;
 
 interface Classification {
-  product_type: "website" | "app" | "automation" | "digital_product";
-  package: "digital_product" | "start" | "standard" | "custom";
+  product_type: "website" | "app" | "automation" | "digital_product" | "redesign";
+  package: "digital_product" | "start" | "standard" | "custom" | "redesign";
   estimated_price: number;
   deposit_amount: number;
   description: string;
@@ -13,7 +13,11 @@ interface Classification {
   timeline: string;
 }
 
-async function classifyPrompt(prompt: string): Promise<Classification> {
+async function classifyPrompt(prompt: string, hasImages: boolean, hasUrl: boolean): Promise<Classification> {
+  const redesignHint = (hasImages || hasUrl)
+    ? "\n\nUWAGA: Klient przesłał screenshoty istniejącej strony lub podał URL - to prawdopodobnie zlecenie redesignu/ulepszenia."
+    : "";
+
   const response = await fetch(
     "https://openrouter.ai/api/v1/chat/completions",
     {
@@ -35,11 +39,12 @@ Zasady klasyfikacji:
 - Wielostronicowa aplikacja z auth/bazą danych -> standard, 2999 PLN
 - Złożony system (CRM, marketplace, platforma) -> custom, 4999 PLN lub więcej
 - Automatyzacja, integracja, bot, workflow -> automation, 499 PLN
+- Redesign, ulepszenie istniejącej strony/aplikacji (klient podaje URL lub screeny) -> redesign, od 799 PLN${redesignHint}
 
 Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
 {
-  "product_type": "website" | "app" | "automation" | "digital_product",
-  "package": "digital_product" | "start" | "standard" | "custom",
+  "product_type": "website" | "app" | "automation" | "digital_product" | "redesign",
+  "package": "digital_product" | "start" | "standard" | "custom" | "redesign",
   "estimated_price": number (PLN),
   "deposit_amount": number (30% ceny, zaokrąglone),
   "description": "1-2 zdania po polsku opisujące co zostanie zbudowane",
@@ -67,10 +72,29 @@ Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
   return JSON.parse(content) as Classification;
 }
 
+async function fetchScreenshotFromUrl(url: string): Promise<string | null> {
+  try {
+    const microlinkUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`;
+    const res = await fetch(microlinkUrl);
+    if (res.ok) {
+      // Microlink with embed=screenshot.url redirects to the image URL
+      return res.url || microlinkUrl;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function enhancePromptForStitch(
   prompt: string,
-  classification: Classification
+  classification: Classification,
+  url?: string
 ): Promise<string> {
+  const existingSiteContext = url
+    ? `\n\nThe client wants to redesign/improve an existing website at: ${url}. Use this as reference for the current state, but create a significantly improved version with modern design.`
+    : "";
+
   const response = await fetch(
     "https://openrouter.ai/api/v1/chat/completions",
     {
@@ -92,12 +116,12 @@ Prompt powinien być PO ANGIELSKU i zawierać:
 - Styl wizualny (nowoczesny, ciemny motyw, jasny, minimalistyczny)
 - Przykładowe treści (nagłówki, opisy, CTA)
 - Kolorystykę (zaproponuj spójną paletę)
-
+${classification.product_type === "redesign" ? "\nThis is a REDESIGN project. Focus on improving the existing design while keeping the brand identity. Highlight what should change and what should stay." : ""}
 Napisz TYLKO prompt, bez dodatkowych komentarzy. Maks 500 słów.`,
           },
           {
             role: "user",
-            content: `Opis klienta: ${prompt}\n\nTyp produktu: ${classification.product_type}\nPakiet: ${classification.package}\nOpis: ${classification.description}`,
+            content: `Opis klienta: ${prompt}\n\nTyp produktu: ${classification.product_type}\nPakiet: ${classification.package}\nOpis: ${classification.description}${existingSiteContext}`,
           },
         ],
         max_tokens: 800,
@@ -115,7 +139,11 @@ Napisz TYLKO prompt, bez dodatkowych komentarzy. Maks 500 słów.`,
 
 export async function POST(request: Request) {
   try {
-    const { prompt } = await request.json();
+    const { prompt, images, url } = await request.json() as {
+      prompt: string;
+      images?: string[];
+      url?: string;
+    };
 
     if (!prompt || typeof prompt !== "string") {
       return Response.json(
@@ -124,8 +152,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const hasImages = Array.isArray(images) && images.length > 0;
+    const hasUrl = typeof url === "string" && url.length > 0;
+
+    // Fetch screenshot of existing site if URL provided
+    let sourceScreenshotUrl: string | null = null;
+    if (hasUrl) {
+      sourceScreenshotUrl = await fetchScreenshotFromUrl(url);
+    }
+
     // Step 1: Classify the prompt
-    const classification = await classifyPrompt(prompt);
+    const classification = await classifyPrompt(prompt, hasImages, hasUrl);
 
     // Step 2: Create Supabase record
     const { data: project, error: insertError } = await supabase
@@ -140,6 +177,8 @@ export async function POST(request: Request) {
         features: classification.features,
         timeline: classification.timeline,
         status: "preview_generating",
+        source_url: url || null,
+        source_images: hasImages ? images : null,
       })
       .select()
       .single();
@@ -153,7 +192,7 @@ export async function POST(request: Request) {
     }
 
     // Step 3: Enhance prompt for Stitch
-    const enhancedPrompt = await enhancePromptForStitch(prompt, classification);
+    const enhancedPrompt = await enhancePromptForStitch(prompt, classification, url || undefined);
 
     // Step 4: Generate design with Stitch
     const shortPrompt =
@@ -186,6 +225,8 @@ export async function POST(request: Request) {
       classification,
       previewUrl: imageUrl,
       htmlUrl,
+      sourceScreenshotUrl,
+      sourceUrl: url || null,
     });
   } catch (error) {
     console.error("Generate error:", error);

@@ -18,6 +18,8 @@ interface GenerateResult {
   classification: Classification;
   previewUrl: string;
   htmlUrl: string;
+  sourceScreenshotUrl: string | null;
+  sourceUrl: string | null;
 }
 
 const LOADING_MESSAGES = [
@@ -44,6 +46,11 @@ const PACKAGE_CONFIG: Record<
     icon: "dashboard",
     color: "#81ecff",
   },
+  redesign: {
+    label: "Redesign",
+    icon: "refresh",
+    color: "#81ecff",
+  },
   custom: {
     label: "Pakiet Custom",
     icon: "architecture",
@@ -55,6 +62,7 @@ const PACKAGE_CONFIG: Record<
 function PreviewContent() {
   const searchParams = useSearchParams();
   const prompt = searchParams.get("prompt") || "";
+  const url = searchParams.get("url") || "";
 
   const [status, setStatus] = useState<
     "loading" | "ready" | "error"
@@ -62,6 +70,20 @@ function PreviewContent() {
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [error, setError] = useState<string>("");
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [sourceImages, setSourceImages] = useState<string[]>([]);
+
+  // Read images from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("stawiamy_images");
+      if (stored) {
+        setSourceImages(JSON.parse(stored));
+        sessionStorage.removeItem("stawiamy_images");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Rotate loading messages
   useEffect(() => {
@@ -82,10 +104,27 @@ function PreviewContent() {
     }
 
     try {
+      // Read images from sessionStorage (may not be in state yet on first render)
+      let images: string[] = [];
+      try {
+        const stored = sessionStorage.getItem("stawiamy_images");
+        if (stored) {
+          images = JSON.parse(stored);
+          sessionStorage.removeItem("stawiamy_images");
+          setSourceImages(images);
+        }
+      } catch {
+        // ignore
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          prompt,
+          images: images.length > 0 ? images : undefined,
+          url: url || undefined,
+        }),
       });
 
       if (!res.ok) {
@@ -104,7 +143,7 @@ function PreviewContent() {
       );
       setStatus("error");
     }
-  }, [prompt]);
+  }, [prompt, url]);
 
   useEffect(() => {
     generate();
@@ -218,6 +257,49 @@ function PreviewContent() {
         {/* Ready state */}
         {status === "ready" && result && packageInfo && (
           <div className="space-y-8 animate-fade-in">
+            {/* Source site screenshots (redesign mode) */}
+            {(result.sourceScreenshotUrl || sourceImages.length > 0) && (
+              <div>
+                <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-3 block">
+                  Obecna strona
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {result.sourceScreenshotUrl && (
+                    <div className="rounded-[0.5rem] border border-[#484847] overflow-hidden bg-[#131313]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={result.sourceScreenshotUrl}
+                        alt="Obecna strona"
+                        className="w-full"
+                      />
+                      {result.sourceUrl && (
+                        <div className="px-4 py-2 text-xs text-[#adaaaa] truncate">
+                          {result.sourceUrl}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {sourceImages.map((img, i) => (
+                    <div key={i} className="rounded-[0.5rem] border border-[#484847] overflow-hidden bg-[#131313]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img}
+                        alt={`Załącznik ${i + 1}`}
+                        className="w-full"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* New design label for redesign */}
+            {(result.sourceScreenshotUrl || sourceImages.length > 0) && (
+              <span className="text-xs font-medium text-[#81ecff] uppercase tracking-wider block">
+                Nowy design
+              </span>
+            )}
+
             {/* Screenshot */}
             <div className="rounded-[0.75rem] border border-[#484847] overflow-hidden bg-[#131313]">
               {/* Browser bar */}
@@ -340,10 +422,10 @@ function PreviewContent() {
                     PLN
                   </a>
                   <a
-                    href="mailto:konrad@ikonmedia.pl?subject=Zapytanie o projekt"
+                    href="/#contact"
                     className="block w-full text-center text-sm text-[#adaaaa] hover:text-white transition-colors py-2"
                   >
-                    Chcesz porozmawiać? Napisz do nas
+                    Chcesz porozmawiać o szczegółach?
                   </a>
                 </div>
               </div>

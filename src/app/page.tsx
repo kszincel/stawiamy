@@ -1,5 +1,5 @@
-import Image from "next/image";
 import ChatInput from "./components/ChatInput";
+import ContactForm from "./components/ContactForm";
 
 function Nav() {
   return (
@@ -33,10 +33,16 @@ function Nav() {
           >
             Realizacje
           </a>
+          <a
+            href="#contact"
+            className="text-sm text-[#adaaaa] hover:text-white transition-colors"
+          >
+            Kontakt
+          </a>
         </div>
 
         <a
-          href="#cta"
+          href="#contact"
           className="rounded-full bg-[#1a1a1a] border border-[#484847] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#262626] transition-colors"
         >
           Wyślij zapytanie
@@ -379,6 +385,22 @@ function CTA() {
   );
 }
 
+function Contact() {
+  return (
+    <section id="contact" className="bg-[#131313] px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-3xl flex flex-col items-center text-center gap-8">
+        <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter font-[var(--font-plus-jakarta)]">
+          Wolisz porozmawiać?
+        </h2>
+        <p className="text-lg text-[#adaaaa] max-w-xl">
+          Opisz swój projekt lub zadaj pytanie. Odezwiemy się w ciągu 24h.
+        </p>
+        <ContactForm />
+      </div>
+    </section>
+  );
+}
+
 function Footer() {
   return (
     <footer className="bg-[#131313] border-t border-[#484847]/30 px-6 py-8">
@@ -427,6 +449,7 @@ export default function Home() {
         <Services />
         <Showcase />
         <CTA />
+        <Contact />
       </main>
       <Footer />
     </>
