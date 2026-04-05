@@ -34,7 +34,7 @@ function PreviewContent() {
         {prompt && (
           <div className="mb-12">
             <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-3 block">
-              Twoj brief
+              Twój brief
             </span>
             <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-6">
               <p className="text-white leading-relaxed">{prompt}</p>
@@ -51,7 +51,7 @@ function PreviewContent() {
 
           <div className="text-center">
             <h2 className="text-xl font-bold text-white mb-2">
-              Generujemy Twoj preview
+              Generujemy Twój preview
               <span className="dot-pulse inline-flex ml-1">
                 <span className="text-[#81ecff]">.</span>
                 <span className="text-[#81ecff]">.</span>
@@ -59,7 +59,7 @@ function PreviewContent() {
               </span>
             </h2>
             <p className="text-sm text-[#adaaaa]">
-              To moze zajac kilka minut. Nie zamykaj tej strony.
+              To może zająć kilka minut. Nie zamykaj tej strony.
             </p>
           </div>
         </div>
@@ -71,7 +71,7 @@ function PreviewContent() {
               preview
             </span>
             <p className="text-sm text-[#484847]">
-              Podglad pojawi sie tutaj
+              Podgląd pojawi się tutaj
             </p>
           </div>
         </div>

@@ -15,9 +15,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "stawiamy.ai | Twoj pomysl. Gotowy produkt w 48h.",
+  title: "stawiamy.ai | Twój pomysł. Gotowy produkt w 48h.",
   description:
-    "AI buildery generuja kod. My budujemy dopracowane produkty - od pomyslu do gotowej strony, aplikacji lub automatyzacji.",
+    "AI buildery generują kod. My budujemy dopracowane produkty - od pomysłu do gotowej strony, aplikacji lub automatyzacji.",
 };
 
 export default function RootLayout({

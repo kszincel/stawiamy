@@ -24,7 +24,7 @@ export default function ChatInput({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          placeholder="Opisz swoj pomysl..."
+          placeholder="Opisz swój pomysł..."
           className="flex-1 rounded-full bg-[#1a1a1a] px-6 py-4 text-white placeholder:text-[#adaaaa] outline-none border border-[#484847] focus:border-[#81ecff] transition-colors"
         />
         <button
@@ -49,7 +49,7 @@ export default function ChatInput({
               handleSubmit();
             }
           }}
-          placeholder="Powiedz nam co chcesz postawic..."
+          placeholder="Powiedz nam co chcesz postawić..."
           rows={3}
           className="w-full resize-none bg-transparent text-white placeholder:text-[#adaaaa] outline-none px-2 py-2 text-base"
         />

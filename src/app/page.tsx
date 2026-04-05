@@ -19,7 +19,7 @@ function Nav() {
             href="#how-it-works"
             className="text-sm text-[#adaaaa] hover:text-white transition-colors"
           >
-            Jak to dziala
+            Jak to działa
           </a>
           <a
             href="#services"
@@ -39,7 +39,7 @@ function Nav() {
           href="#cta"
           className="rounded-full bg-[#1a1a1a] border border-[#484847] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#262626] transition-colors"
         >
-          Wyslij zapytanie
+          Wyślij zapytanie
         </a>
       </div>
     </nav>
@@ -53,14 +53,14 @@ function Hero() {
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-4xl gap-8">
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter font-[var(--font-plus-jakarta)] leading-[1.05]">
-          Twoj pomysl.
+          Twój pomysł.
           <br />
           <span className="text-[#81ecff]">Gotowy produkt</span> w 48h.
         </h1>
 
         <p className="max-w-2xl text-lg md:text-xl text-[#adaaaa] leading-relaxed">
-          AI buildery generuja kod. My budujemy dopracowane produkty - od
-          pomyslu do gotowej strony, aplikacji lub automatyzacji.
+          AI buildery generują kod. My budujemy dopracowane produkty - od
+          pomysłu do gotowej strony, aplikacji lub automatyzacji.
         </p>
 
         <ChatInput variant="hero" />
@@ -72,7 +72,7 @@ function Hero() {
           </span>
           <span className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-[#c3f400]" />
-            Bez zobowiazan
+            Bez zobowiązań
           </span>
           <span className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-[#c3f400]" />
@@ -100,9 +100,9 @@ function Differentiator() {
             </h3>
             <ul className="space-y-4">
               {[
-                "Generyczny kod bez kontroli jakosci",
-                "Brak designu - wygladaja jak template",
-                "Sam musisz hostowac, konfigurowac, debugowac",
+                "Generyczny kod bez kontroli jakości",
+                "Brak designu - wyglądają jak template",
+                "Sam musisz hostować, konfigurować, debugować",
                 "Zero wsparcia po wygenerowaniu",
                 "Ograniczony do prostych stron",
               ].map((item) => (
@@ -129,10 +129,10 @@ function Differentiator() {
             </div>
             <ul className="space-y-4">
               {[
-                "Recznie dopracowany design i UX",
+                "Ręcznie dopracowany design i UX",
                 "Responsywne, szybkie, zoptymalizowane",
                 "Hosting, domena, SSL - wszystko w cenie",
-                "Wsparcie i poprawki po wdrozeniu",
+                "Wsparcie i poprawki po wdrożeniu",
                 "Strony, aplikacje, automatyzacje, API",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3 text-white">
@@ -155,13 +155,13 @@ function HowItWorks() {
     {
       num: "01",
       title: "Opisz czego potrzebujesz",
-      desc: "Wpisz swoj pomysl w chat lub wyslij brief. Im wiecej szczegolow, tym lepszy efekt.",
+      desc: "Wpisz swój pomysł w chat lub wyślij brief. Im więcej szczegółów, tym lepszy efekt.",
       icon: "chat",
     },
     {
       num: "02",
       title: "Preview w kilka minut",
-      desc: "Generujemy wizualny podglad Twojego produktu. Sprawdzasz, komentujesz, iterujemy.",
+      desc: "Generujemy wizualny podgląd Twojego produktu. Sprawdzasz, komentujesz, iterujemy.",
       icon: "auto_awesome",
       filled: true,
       iconColor: "text-[#c3f400]",
@@ -178,7 +178,7 @@ function HowItWorks() {
     <section id="how-it-works" className="bg-[#131313] px-6 py-24 md:py-32">
       <div className="mx-auto max-w-6xl">
         <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter font-[var(--font-plus-jakarta)] text-center mb-16">
-          Jak to dziala
+          Jak to działa
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -252,7 +252,7 @@ function Services() {
                 Automatyzacje
               </h3>
               <p className="text-sm text-[#adaaaa] leading-relaxed">
-                Integracje, workflowy, boty, powiadomienia. Polacz narzedzia i
+                Integracje, workflowy, boty, powiadomienia. Połącz narzędzia i
                 zautomatyzuj procesy.
               </p>
             </div>
@@ -274,8 +274,8 @@ function Services() {
                 Produkty cyfrowe
               </h3>
               <p className="text-sm text-[#adaaaa] leading-relaxed">
-                Narzedzia, kalkulatory, formularze, mikro-appki. Szybkie
-                rozwiazania na konkretny problem.
+                Narzędzia, kalkulatory, formularze, mikro-appki. Szybkie
+                rozwiązania na konkretny problem.
               </p>
             </div>
             <div className="mt-4">
@@ -288,8 +288,8 @@ function Services() {
         </div>
 
         <p className="text-center text-sm text-[#adaaaa] mt-8">
-          Czas realizacji zalezy od zlozonosci - od 48h dla prostych stron po kilka
-          tygodni dla rozbudowanych systemow.
+          Czas realizacji zależy od złożoności - od 48h dla prostych stron po kilka
+          tygodni dla rozbudowanych systemów.
         </p>
       </div>
     </section>
@@ -344,7 +344,7 @@ function Showcase() {
                   lock_clock
                 </span>
                 <span className="text-sm text-[#484847] font-medium">
-                  Wkrotce
+                  Wkrótce
                 </span>
               </div>
             ))}
@@ -360,7 +360,7 @@ function CTA() {
     <section id="cta" className="px-6 py-24 md:py-32">
       <div className="mx-auto max-w-3xl flex flex-col items-center text-center gap-8">
         <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter font-[var(--font-plus-jakarta)]">
-          Masz pomysl? Zrobmy to.
+          Masz pomysł? Zróbmy to.
         </h2>
 
         <ChatInput variant="cta" />
@@ -394,7 +394,7 @@ function Footer() {
 
         <span className="text-xs text-[#767575]">
           &copy; {new Date().getFullYear()} stawiamy.ai. Wszystkie prawa
-          zastrzezone.
+          zastrzeżone.
         </span>
 
         <div className="flex items-center gap-6">
@@ -402,7 +402,7 @@ function Footer() {
             href="/privacy"
             className="text-xs text-[#767575] hover:text-[#adaaaa] transition-colors"
           >
-            Polityka prywatnosci
+            Polityka prywatności
           </a>
           <a
             href="/terms"
