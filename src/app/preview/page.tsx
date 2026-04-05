@@ -1,11 +1,118 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+
+interface Classification {
+  product_type: "website" | "app" | "automation" | "digital_product";
+  package: "digital_product" | "start" | "standard" | "custom";
+  estimated_price: number;
+  deposit_amount: number;
+  description: string;
+  features: string[];
+  timeline: string;
+}
+
+interface GenerateResult {
+  projectId: string;
+  classification: Classification;
+  previewUrl: string;
+  htmlUrl: string;
+}
+
+const LOADING_MESSAGES = [
+  "Analizujemy Twój pomysł...",
+  "Dobieramy najlepsze rozwiązania...",
+  "Projektujemy interfejs...",
+  "Generujemy podgląd...",
+  "Dopracowujemy detale...",
+  "Prawie gotowe...",
+];
+
+const PACKAGE_CONFIG: Record<
+  string,
+  { label: string; icon: string; color: string }
+> = {
+  digital_product: {
+    label: "Produkt cyfrowy",
+    icon: "widgets",
+    color: "#70aaff",
+  },
+  start: { label: "Pakiet Start", icon: "web", color: "#81ecff" },
+  standard: {
+    label: "Pakiet Standard",
+    icon: "dashboard",
+    color: "#81ecff",
+  },
+  custom: {
+    label: "Pakiet Custom",
+    icon: "architecture",
+    color: "#c3f400",
+  },
+  automation: { label: "Automatyzacja", icon: "bolt", color: "#c3f400" },
+};
 
 function PreviewContent() {
   const searchParams = useSearchParams();
   const prompt = searchParams.get("prompt") || "";
+
+  const [status, setStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
+  const [result, setResult] = useState<GenerateResult | null>(null);
+  const [error, setError] = useState<string>("");
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+
+  // Rotate loading messages
+  useEffect(() => {
+    if (status !== "loading") return;
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) =>
+        prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
+      );
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  const generate = useCallback(async () => {
+    if (!prompt) {
+      setStatus("error");
+      setError("Brak opisu projektu. Wróć na stronę główną i opisz swój pomysł.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          data.error || `Błąd serwera (${res.status})`
+        );
+      }
+
+      const data: GenerateResult = await res.json();
+      setResult(data);
+      setStatus("ready");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd"
+      );
+      setStatus("error");
+    }
+  }, [prompt]);
+
+  useEffect(() => {
+    generate();
+  }, [generate]);
+
+  const packageInfo = result
+    ? PACKAGE_CONFIG[result.classification.package] || PACKAGE_CONFIG.start
+    : null;
 
   return (
     <div className="min-h-screen bg-[#0e0e0e] text-white font-[var(--font-inter)]">
@@ -29,10 +136,10 @@ function PreviewContent() {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-4xl px-6 py-16">
+      <div className="mx-auto max-w-5xl px-6 py-12">
         {/* Prompt display */}
         {prompt && (
-          <div className="mb-12">
+          <div className="mb-10">
             <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-3 block">
               Twój brief
             </span>
@@ -43,38 +150,226 @@ function PreviewContent() {
         )}
 
         {/* Loading state */}
-        <div className="flex flex-col items-center justify-center py-24 gap-6">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-full border-2 border-[#484847]" />
-            <div className="absolute inset-0 h-16 w-16 rounded-full border-2 border-transparent border-t-[#81ecff] animate-spin" />
-          </div>
+        {status === "loading" && (
+          <div className="flex flex-col items-center justify-center py-24 gap-6 animate-fade-in">
+            <div className="relative">
+              <div className="h-16 w-16 rounded-full border-2 border-[#484847]" />
+              <div className="absolute inset-0 h-16 w-16 rounded-full border-2 border-transparent border-t-[#81ecff] animate-spin" />
+            </div>
 
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-white mb-2">
-              Generujemy Twój preview
-              <span className="dot-pulse inline-flex ml-1">
-                <span className="text-[#81ecff]">.</span>
-                <span className="text-[#81ecff]">.</span>
-                <span className="text-[#81ecff]">.</span>
-              </span>
-            </h2>
-            <p className="text-sm text-[#adaaaa]">
-              To może zająć kilka minut. Nie zamykaj tej strony.
-            </p>
-          </div>
-        </div>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-white mb-2">
+                {LOADING_MESSAGES[loadingMessageIndex]}
+              </h2>
+              <p className="text-sm text-[#adaaaa]">
+                To może potrwać 1-2 minuty. Nie zamykaj tej strony.
+              </p>
+            </div>
 
-        {/* Preview placeholder */}
-        <div className="rounded-[0.5rem] border border-dashed border-[#484847] bg-[#131313] min-h-[400px] flex items-center justify-center">
-          <div className="text-center">
-            <span className="material-symbols-outlined text-4xl text-[#484847] mb-3 block">
-              preview
+            {/* Progress dots */}
+            <div className="flex items-center gap-2 mt-4">
+              {LOADING_MESSAGES.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    i <= loadingMessageIndex
+                      ? "w-6 bg-[#81ecff]"
+                      : "w-1.5 bg-[#484847]"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Error state */}
+        {status === "error" && (
+          <div className="flex flex-col items-center justify-center py-24 gap-6 animate-fade-in">
+            <span className="material-symbols-outlined text-5xl text-[#ff716c]">
+              error
             </span>
-            <p className="text-sm text-[#484847]">
-              Podgląd pojawi się tutaj
-            </p>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-white mb-2">
+                Coś poszło nie tak
+              </h2>
+              <p className="text-sm text-[#adaaaa] max-w-md">{error}</p>
+            </div>
+            <div className="flex items-center gap-4 mt-4">
+              <button
+                onClick={() => {
+                  setStatus("loading");
+                  setLoadingMessageIndex(0);
+                  generate();
+                }}
+                className="rounded-full bg-[#1a1a1a] border border-[#484847] px-6 py-3 text-sm font-medium text-white hover:bg-[#262626] transition-colors cursor-pointer"
+              >
+                Spróbuj ponownie
+              </button>
+              <a
+                href="/"
+                className="text-sm text-[#81ecff] hover:underline"
+              >
+                Wróć na stronę główną
+              </a>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Ready state */}
+        {status === "ready" && result && packageInfo && (
+          <div className="space-y-8 animate-fade-in">
+            {/* Screenshot */}
+            <div className="rounded-[0.75rem] border border-[#484847] overflow-hidden bg-[#131313]">
+              {/* Browser bar */}
+              <div className="flex items-center gap-2 px-4 py-3 bg-[#1a1a1a] border-b border-[#484847]/50">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-3 w-3 rounded-full bg-[#ff716c]/60" />
+                  <div className="h-3 w-3 rounded-full bg-[#c3f400]/60" />
+                  <div className="h-3 w-3 rounded-full bg-[#81ecff]/60" />
+                </div>
+                <div className="flex-1 mx-4">
+                  <div className="h-6 rounded-full bg-[#0e0e0e] border border-[#484847]/50 max-w-sm mx-auto" />
+                </div>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={result.previewUrl}
+                alt="Podgląd projektu"
+                className="w-full"
+              />
+            </div>
+
+            {/* Cards grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Classification card */}
+              <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <span
+                    className="material-symbols-outlined text-3xl"
+                    style={{ color: packageInfo.color }}
+                  >
+                    {packageInfo.icon}
+                  </span>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      {packageInfo.label}
+                    </h3>
+                    <span className="text-xs text-[#adaaaa]">
+                      {result.classification.timeline}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-[#adaaaa] leading-relaxed mb-6">
+                  {result.classification.description}
+                </p>
+
+                <div className="space-y-3">
+                  <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider">
+                    Co zawiera
+                  </span>
+                  {result.classification.features.map((feature) => (
+                    <div
+                      key={feature}
+                      className="flex items-start gap-2"
+                    >
+                      <span className="text-[#81ecff] mt-0.5 shrink-0 text-sm">
+                        &#x2713;
+                      </span>
+                      <span className="text-sm text-white">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price card */}
+              <div className="rounded-[0.5rem] border border-[#81ecff]/30 bg-[#1a1a1a] p-8 shadow-[0_0_40px_-12px_rgba(129,236,255,0.1)] flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-2">
+                    {packageInfo.label}
+                  </h3>
+                  <div className="mb-6">
+                    <span className="text-4xl font-extrabold text-white font-[var(--font-plus-jakarta)]">
+                      {result.classification.estimated_price.toLocaleString(
+                        "pl-PL"
+                      )}
+                    </span>
+                    <span className="text-lg text-[#adaaaa] ml-2">PLN</span>
+                  </div>
+
+                  <div className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 mb-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[#adaaaa]">
+                        Zaliczka (30%)
+                      </span>
+                      <span className="text-lg font-bold text-[#c3f400]">
+                        {result.classification.deposit_amount.toLocaleString(
+                          "pl-PL"
+                        )}{" "}
+                        PLN
+                      </span>
+                    </div>
+                  </div>
+
+                  <ul className="space-y-2 mb-8">
+                    {[
+                      "Hosting i domena w cenie",
+                      "Wsparcie po wdrożeniu",
+                      "Kod źródłowy w pakiecie",
+                    ].map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-center gap-2 text-sm text-[#adaaaa]"
+                      >
+                        <span className="h-1 w-1 rounded-full bg-[#484847]" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-3">
+                  <a
+                    href={`mailto:konrad@ikonmedia.pl?subject=Zamówienie: ${packageInfo.label}&body=Cześć! Chcę zamówić projekt na podstawie wygenerowanego preview.%0A%0AOpis: ${encodeURIComponent(prompt)}%0ACena: ${result.classification.estimated_price} PLN%0AZaliczka: ${result.classification.deposit_amount} PLN`}
+                    className="block w-full rounded-full bg-[#81ecff] py-4 text-center font-semibold text-[#005762] hover:bg-[#00d4ec] transition-colors"
+                  >
+                    Zamów za{" "}
+                    {result.classification.deposit_amount.toLocaleString(
+                      "pl-PL"
+                    )}{" "}
+                    PLN
+                  </a>
+                  <a
+                    href="mailto:konrad@ikonmedia.pl?subject=Zapytanie o projekt"
+                    className="block w-full text-center text-sm text-[#adaaaa] hover:text-white transition-colors py-2"
+                  >
+                    Chcesz porozmawiać? Napisz do nas
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* HTML preview link */}
+            {result.htmlUrl && (
+              <div className="text-center">
+                <a
+                  href={result.htmlUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-[#81ecff] hover:underline"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    code
+                  </span>
+                  Zobacz interaktywny podgląd HTML
+                  <span className="material-symbols-outlined text-base">
+                    arrow_outward
+                  </span>
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
