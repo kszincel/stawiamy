@@ -366,6 +366,26 @@ async function executeTool(
       const description = String(args.description || "");
       const apiKey = process.env.OPENROUTER_API_KEY;
       if (!apiKey) return "Błąd: brak OPENROUTER_API_KEY.";
+
+      // Fetch project to include attachments + brief context
+      const { data: projectCtx } = await supabase
+        .from("projects")
+        .select("attachments, ai_brief, brief, details, prompt")
+        .eq("id", projectId)
+        .single();
+
+      const attachments = Array.isArray(projectCtx?.attachments)
+        ? (projectCtx.attachments as Array<{ url: string; filename: string; type: string }>)
+        : [];
+
+      const attachmentsContext = attachments.length > 0
+        ? `\n\nIMPORTANT - Klient załączył pliki, które workflow MUSI uwzględnić:\n${attachments
+            .map((a) => `- ${a.filename} (${a.type}): ${a.url}`)
+            .join("\n")}\n\nWorkflow MUSI zawierać nody które:\n1. Pobierają każdy z tych plików (HTTP Request node z URL)\n2. Parsują ich zawartość (Extract from File node dla PDF, Read Binary File etc.)\n3. Przekazują do AI jako context (Claude API supports document attachments natively - use HTTP Request to api.anthropic.com/v1/messages with document type in content)\n\nDodaj wyraźne komentarze w nazwach nodów które pliki obsługują.`
+        : "";
+
+      const projectContext = `\n\nKontekst projektu:\n- Original prompt: ${projectCtx?.prompt || ''}\n- Brief: ${(projectCtx?.ai_brief || projectCtx?.brief || '').substring(0, 800)}\n- Form details: ${JSON.stringify(projectCtx?.details || {}, null, 2).substring(0, 800)}`;
+
       const res = await fetch(
         "https://openrouter.ai/api/v1/chat/completions",
         {
@@ -380,7 +400,9 @@ async function executeTool(
               {
                 role: "system",
                 content:
-                  "You are an n8n workflow expert. Generate a complete, importable n8n workflow JSON. Use real n8n node types like n8n-nodes-base.webhook, n8n-nodes-base.httpRequest, n8n-nodes-base.openAi, n8n-nodes-base.if, n8n-nodes-base.set, n8n-nodes-base.code, n8n-nodes-base.scheduleTrigger. Each node needs: id, name, type, typeVersion, position, parameters. Workflow needs: name, nodes array, connections object, settings. Return ONLY valid JSON, no markdown, no commentary.",
+                  "You are an n8n workflow expert. Generate a complete, importable n8n workflow JSON. Use real n8n node types like n8n-nodes-base.webhook, n8n-nodes-base.httpRequest, n8n-nodes-base.openAi, n8n-nodes-base.if, n8n-nodes-base.set, n8n-nodes-base.code, n8n-nodes-base.scheduleTrigger, n8n-nodes-base.extractFromFile, n8n-nodes-base.readBinaryFile. Each node needs: id, name, type, typeVersion, position, parameters. Workflow needs: name, nodes array, connections object, settings. Return ONLY valid JSON, no markdown, no commentary." +
+                  projectContext +
+                  attachmentsContext,
               },
               { role: "user", content: description },
             ],
