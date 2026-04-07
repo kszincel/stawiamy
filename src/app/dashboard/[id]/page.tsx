@@ -223,7 +223,7 @@ export default async function ProjectDetailPage({
               </div>
               {project.delivered_file_url && (
                 <a
-                  href={project.delivered_file_url}
+                  href={`${project.delivered_file_url}?t=${new Date(project.delivery_updated_at || Date.now()).getTime()}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-full bg-[#c3f400] text-[#0e0e0e] text-xs font-bold px-4 py-2 hover:opacity-90 transition-opacity"
