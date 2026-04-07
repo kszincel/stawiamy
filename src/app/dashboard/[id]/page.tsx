@@ -6,6 +6,8 @@ import StatusUpdater from "./StatusUpdater";
 import EditDetails from "./EditDetails";
 import PaymentSection from "./PaymentSection";
 import PaymentToast from "./PaymentToast";
+import RecommendedActions from "./RecommendedActions";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +127,12 @@ export default async function ProjectDetailPage({
   const sourceImages: string[] = Array.isArray(project.source_images) ? project.source_images : [];
   const attachments: Attachment[] = Array.isArray(project.attachments) ? project.attachments : [];
   const missingInfo: string[] = Array.isArray(project.ai_missing_info) ? project.ai_missing_info : [];
+  const recommendedActions: string[] = Array.isArray(project.ai_recommended_actions)
+    ? (project.ai_recommended_actions as string[]).filter((x): x is string => typeof x === "string")
+    : [];
+  const completedActions: string[] = Array.isArray(project.completed_actions)
+    ? (project.completed_actions as string[]).filter((x): x is string => typeof x === "string")
+    : [];
 
   const isOwner = !!user?.email && project.contact_email === user.email;
   const paidStatuses = ["deposit_paid", "in_progress", "delivered", "completed"];
@@ -393,8 +401,8 @@ export default async function ProjectDetailPage({
       {/* AI brief */}
       {(project.ai_brief || project.brief) && (
         <Section title="Brief AI">
-          <div className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 text-sm text-white whitespace-pre-wrap leading-relaxed">
-            {project.ai_brief || project.brief}
+          <div className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 leading-relaxed">
+            <MarkdownRenderer content={String(project.ai_brief || project.brief)} />
           </div>
         </Section>
       )}
@@ -421,6 +429,18 @@ export default async function ProjectDetailPage({
               </li>
             ))}
           </ul>
+        </Section>
+      )}
+
+      {/* Recommended actions */}
+      {recommendedActions.length > 0 && (
+        <Section title="Zalecane akcje">
+          <RecommendedActions
+            projectId={project.id}
+            actions={recommendedActions}
+            completed={completedActions}
+            isAdmin={isAdmin}
+          />
         </Section>
       )}
     </div>
