@@ -205,7 +205,9 @@ export default async function ProjectDetailPage({
       {(() => {
         const ds = (project.delivery_state as { initialized?: boolean; sections?: Array<{ name: string; status: string; written_at?: string }>; last_section_written?: string } | null) || null;
         if (!ds || !ds.initialized || !Array.isArray(ds.sections)) return null;
-        const sections = ds.sections;
+        const allSections = ds.sections;
+        const sections = allSections.filter((s) => s.status !== "skip");
+        const skippedCount = allSections.length - sections.length;
         const done = sections.filter((s) => s.status === "done").length;
         const total = sections.length;
         const pct = total ? Math.round((done / total) * 100) : 0;
@@ -213,7 +215,7 @@ export default async function ProjectDetailPage({
           <Section title="Postęp realizacji">
             <div className="space-y-4">
               <div className="flex items-baseline justify-between">
-                <div className="text-2xl font-bold text-[#c3f400]">{done} / {total}</div>
+                <div className="text-2xl font-bold text-[#c3f400]">{done} / {total}{skippedCount > 0 && <span className="text-sm text-[#adaaaa] ml-2 font-normal">(+{skippedCount} pominięte)</span>}</div>
                 <div className="text-xs text-[#adaaaa]">
                   {ds.last_section_written ? `Ostatnio: ${ds.last_section_written}` : ""}
                 </div>
