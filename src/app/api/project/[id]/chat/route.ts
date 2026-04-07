@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { after } from "next/server";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const ADMIN_EMAIL = "konrad@ikonmedia.pl";
 
@@ -607,7 +607,7 @@ async function runToolLoop(
   const executedTools: string[] = [];
   let finalAssistantContent = "";
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -621,7 +621,7 @@ async function runToolLoop(
           messages: apiMessages,
           tools: TOOLS,
           tool_choice: "auto",
-          max_tokens: 2500,
+          max_tokens: 4000,
         }),
       }
     );
