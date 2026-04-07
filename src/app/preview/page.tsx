@@ -357,7 +357,7 @@ function PreviewContent() {
                 </div>
               </div>
             ) : (
-            <div className="rounded-[0.75rem] border border-[#484847] overflow-hidden bg-[#131313]">
+            <div className="mx-auto max-w-3xl rounded-[0.75rem] border border-[#484847] overflow-hidden bg-[#131313]">
               {/* Browser bar */}
               <div className="flex items-center gap-2 px-4 py-3 bg-[#1a1a1a] border-b border-[#484847]/50">
                 <div className="flex items-center gap-1.5">
@@ -369,12 +369,14 @@ function PreviewContent() {
                   <div className="h-6 rounded-full bg-[#0e0e0e] border border-[#484847]/50 max-w-sm mx-auto" />
                 </div>
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={result.previewUrl}
-                alt="Podgląd projektu"
-                className="w-full"
-              />
+              <div className="max-h-[70vh] overflow-y-auto bg-[#0e0e0e] flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={result.previewUrl}
+                  alt="Podgląd projektu"
+                  className="max-w-full h-auto"
+                />
+              </div>
             </div>
             )}
 
