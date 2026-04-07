@@ -398,50 +398,56 @@ export default async function ProjectDetailPage({
         </Section>
       )}
 
-      {/* AI brief */}
-      {(project.ai_brief || project.brief) && (
-        <Section title="Brief AI">
-          <div className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 leading-relaxed">
-            <MarkdownRenderer content={String(project.ai_brief || project.brief)} />
+      {/* Admin-only: technical brief, artifact, missing info, recommended actions */}
+      {isAdmin && (
+        <>
+          <div className="rounded-[0.5rem] border border-[#c3f400]/30 bg-[#c3f400]/5 px-4 py-2 text-xs text-[#c3f400] uppercase tracking-wider font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">lock</span>
+            Sekcje widoczne tylko dla admina
           </div>
-        </Section>
-      )}
 
-      {/* AI artifact */}
-      {project.ai_artifact && (
-        <Section title="Artefakt AI">
-          <pre className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 text-xs text-white whitespace-pre-wrap font-mono overflow-x-auto">
-            {typeof project.ai_artifact === "string"
-              ? project.ai_artifact
-              : JSON.stringify(project.ai_artifact, null, 2)}
-          </pre>
-        </Section>
-      )}
+          {(project.ai_brief || project.brief) && (
+            <Section title="Brief AI (admin only)">
+              <div className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 leading-relaxed">
+                <MarkdownRenderer content={String(project.ai_brief || project.brief)} />
+              </div>
+            </Section>
+          )}
 
-      {/* Missing info */}
-      {missingInfo.length > 0 && (
-        <Section title="Brakujące informacje">
-          <ul className="space-y-1.5">
-            {missingInfo.map((m, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-white">
-                <span className="text-[#ff716c] mt-0.5">!</span>
-                {m}
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+          {project.ai_artifact && (
+            <Section title="Artefakt AI (admin only)">
+              <pre className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 text-xs text-white whitespace-pre-wrap font-mono overflow-x-auto">
+                {typeof project.ai_artifact === "string"
+                  ? project.ai_artifact
+                  : JSON.stringify(project.ai_artifact, null, 2)}
+              </pre>
+            </Section>
+          )}
 
-      {/* Recommended actions */}
-      {recommendedActions.length > 0 && (
-        <Section title="Zalecane akcje">
-          <RecommendedActions
-            projectId={project.id}
-            actions={recommendedActions}
-            completed={completedActions}
-            isAdmin={isAdmin}
-          />
-        </Section>
+          {missingInfo.length > 0 && (
+            <Section title="Brakujące informacje (admin only)">
+              <ul className="space-y-1.5">
+                {missingInfo.map((m, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-white">
+                    <span className="text-[#ff716c] mt-0.5">!</span>
+                    {m}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {recommendedActions.length > 0 && (
+            <Section title="Zalecane akcje (admin only)">
+              <RecommendedActions
+                projectId={project.id}
+                actions={recommendedActions}
+                completed={completedActions}
+                isAdmin={isAdmin}
+              />
+            </Section>
+          )}
+        </>
       )}
     </div>
   );
