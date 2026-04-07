@@ -328,26 +328,39 @@ function Showcase() {
           </a>
 
           {/* Makao Online */}
-          <div className="group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#81ecff]/30 transition-colors flex flex-col">
-            <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#0a1f0a] via-[#0e0e0e] to-[#1a1a1a] flex items-center justify-center">
-              <span className="material-symbols-outlined text-7xl text-[#c3f400]/60">
-                playing_cards
-              </span>
+          <a
+            href="https://makao.kszincel.partykit.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#81ecff]/30 transition-colors flex flex-col"
+          >
+            <div className="relative aspect-[16/9] overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://api.microlink.io/?url=https://makao.kszincel.partykit.dev&screenshot=true&meta=false&embed=screenshot.url"
+                alt="Makao Online - multiplayer card game"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
             </div>
             <div className="p-6 flex flex-col gap-3 flex-1">
-              <h3 className="text-xl font-bold text-white">Makao Online</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold text-white">Makao Online</h3>
+                <span className="material-symbols-outlined text-base text-[#adaaaa] group-hover:text-[#81ecff] transition-colors">
+                  arrow_outward
+                </span>
+              </div>
               <p className="text-sm text-[#adaaaa] leading-relaxed">
                 Wieloosobowa gra karciana online. Real-time multiplayer, własny matchmaking, system pokoi.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
-                {["Next.js", "Supabase Realtime", "Tailwind"].map((t) => (
+                {["Next.js", "PartyKit", "Tailwind"].map((t) => (
                   <span key={t} className="text-[10px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-2 py-0.5">
                     {t}
                   </span>
                 ))}
               </div>
             </div>
-          </div>
+          </a>
 
           {/* Sales AI Agent */}
           <a
