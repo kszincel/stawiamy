@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { after } from "next/server";
 
 export const maxDuration = 60;
 
@@ -539,6 +540,18 @@ export async function POST(
     content: message,
   });
 
+  // Insert placeholder assistant message - we'll update it in background
+  const { data: placeholder } = await supabase
+    .from("project_messages")
+    .insert({
+      project_id: id,
+      role: "assistant",
+      content: "",
+      metadata: { processing: true },
+    })
+    .select("id, role, content, metadata, created_at")
+    .single();
+
   // Build conversation
   const apiMessages: ChatMessage[] = [
     { role: "system", content: buildSystemPrompt(project) },
@@ -549,7 +562,48 @@ export async function POST(
     { role: "user", content: message },
   ];
 
-  // Tool-use loop (max 3 iterations to fit Vercel function budget)
+  // Run tool loop in background after returning response
+  const placeholderId = placeholder?.id;
+  after(async () => {
+    if (!placeholderId) return;
+    try {
+      const result = await runToolLoop(supabase, id, apiMessages, fetchProject);
+      await supabase
+        .from("project_messages")
+        .update({
+          content: result.content,
+          metadata:
+            result.executedTools.length > 0
+              ? { tools: result.executedTools }
+              : {},
+        })
+        .eq("id", placeholderId);
+    } catch (err) {
+      await supabase
+        .from("project_messages")
+        .update({
+          content:
+            "Wystąpił błąd: " +
+            (err instanceof Error ? err.message : "nieznany"),
+          metadata: { error: true },
+        })
+        .eq("id", placeholderId);
+    }
+  });
+
+  // Return placeholder immediately - frontend will poll
+  return Response.json({
+    message: placeholder,
+    processing: true,
+  });
+}
+
+async function runToolLoop(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  apiMessages: ChatMessage[],
+  fetchProject: () => Promise<ProjectRow>
+): Promise<{ content: string; executedTools: string[] }> {
   const executedTools: string[] = [];
   let finalAssistantContent = "";
 
@@ -574,10 +628,7 @@ export async function POST(
 
     if (!response.ok) {
       const errorText = await response.text();
-      return Response.json(
-        { error: `OpenRouter error ${response.status}: ${errorText}` },
-        { status: 500 }
-      );
+      throw new Error(`OpenRouter error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -585,23 +636,20 @@ export async function POST(
     const msg = choice?.message;
 
     if (!msg) {
-      return Response.json({ error: "Pusta odpowiedź z modelu" }, { status: 500 });
+      throw new Error("Pusta odpowiedź z modelu");
     }
 
-    // Add assistant message to conversation
     apiMessages.push({
       role: "assistant",
       content: msg.content || null,
       tool_calls: msg.tool_calls,
     });
 
-    // If no tool calls, we're done
     if (!msg.tool_calls || msg.tool_calls.length === 0) {
       finalAssistantContent = (msg.content || "").trim();
       break;
     }
 
-    // Execute tools
     for (const toolCall of msg.tool_calls) {
       let args: Record<string, unknown> = {};
       try {
@@ -611,7 +659,7 @@ export async function POST(
       }
       const result = await executeTool(
         supabase,
-        id,
+        projectId,
         toolCall.function.name,
         args
       );
@@ -624,35 +672,16 @@ export async function POST(
       });
     }
 
-    // Refresh project state for next iteration
-    project = await fetchProject();
-    apiMessages[0] = { role: "system", content: buildSystemPrompt(project) };
+    const refreshed = await fetchProject();
+    apiMessages[0] = { role: "system", content: buildSystemPrompt(refreshed) };
   }
 
   if (!finalAssistantContent && executedTools.length === 0) {
     finalAssistantContent = "Brak odpowiedzi.";
   } else if (!finalAssistantContent) {
-    finalAssistantContent = "Wykonano akcje:\n" + executedTools.map((t) => "- " + t).join("\n");
+    finalAssistantContent =
+      "Wykonano akcje:\n" + executedTools.map((t) => "- " + t).join("\n");
   }
 
-  // Save assistant message
-  const { data: assistantRow, error: insertErr } = await supabase
-    .from("project_messages")
-    .insert({
-      project_id: id,
-      role: "assistant",
-      content: finalAssistantContent,
-      metadata: executedTools.length > 0 ? { tools: executedTools } : {},
-    })
-    .select("role, content, metadata, created_at")
-    .single();
-
-  if (insertErr || !assistantRow) {
-    return Response.json(
-      { error: insertErr?.message || "Nie udało się zapisać odpowiedzi" },
-      { status: 500 }
-    );
-  }
-
-  return Response.json({ message: assistantRow });
+  return { content: finalAssistantContent, executedTools };
 }

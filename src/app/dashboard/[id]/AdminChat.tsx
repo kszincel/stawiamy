@@ -4,10 +4,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 interface Message {
+  id?: string;
   role: "user" | "assistant";
   content: string;
   created_at: string;
-  metadata?: { tools?: string[] } | null;
+  metadata?: { tools?: string[]; processing?: boolean; error?: boolean } | null;
 }
 
 const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
@@ -90,6 +91,26 @@ export default function AdminChat({ projectId }: { projectId: string }) {
     scrollToBottom();
   }, [messages, sending, scrollToBottom]);
 
+  // Polling: if last message is processing, poll every 3s until done
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || !last.metadata?.processing) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/project/${projectId}/chat`);
+        const data = await r.json();
+        if (Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+      } catch {
+        // ignore
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [messages, projectId]);
+
   const autoGrow = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -137,6 +158,7 @@ export default function AdminChat({ projectId }: { projectId: string }) {
         throw new Error(data.error || `Błąd serwera (${res.status})`);
       }
       if (data.message) {
+        // Add processing placeholder - polling will replace it when done
         setMessages((prev) => [...prev, data.message as Message]);
       }
     } catch (err) {
@@ -185,6 +207,11 @@ export default function AdminChat({ projectId }: { projectId: string }) {
                 >
                   {isUser ? (
                     <div>{m.content}</div>
+                  ) : m.metadata?.processing && !m.content ? (
+                    <div className="flex items-center gap-2 text-[#adaaaa] text-sm">
+                      <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                      Claude pracuje nad odpowiedzią...
+                    </div>
                   ) : (
                     <MarkdownRenderer content={m.content} />
                   )}
