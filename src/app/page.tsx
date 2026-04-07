@@ -65,8 +65,7 @@ function Hero() {
         </h1>
 
         <p className="max-w-2xl text-lg md:text-xl text-[#adaaaa] leading-relaxed">
-          AI buildery generują kod. My budujemy dopracowane produkty - od
-          pomysłu do gotowej strony, aplikacji lub automatyzacji.
+          Strony, aplikacje, automatyzacje, agenty AI. Opisz czego potrzebujesz - dostajesz preview lub brief w kilka minut.
         </p>
 
         <ChatInput variant="hero" />
@@ -166,8 +165,8 @@ function HowItWorks() {
     },
     {
       num: "02",
-      title: "Preview w kilka minut",
-      desc: "Generujemy wizualny podgląd Twojego produktu. Sprawdzasz, komentujesz, iterujemy.",
+      title: "Preview lub brief w kilka minut",
+      desc: "Generujemy wizualizację (dla stron i aplikacji) lub brief techniczny (dla automatyzacji i agentów).",
       icon: "auto_awesome",
       filled: true,
       iconColor: "text-[#c3f400]",
@@ -225,9 +224,9 @@ function Services() {
           Oferta
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:grid-rows-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:grid-rows-2">
           {/* Strony i aplikacje - large */}
-          <div className="md:col-span-2 md:row-span-2 rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[320px] hover:border-[#81ecff]/30 transition-colors">
+          <div className="md:col-span-1 md:row-span-2 rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[320px] hover:border-[#81ecff]/30 transition-colors">
             <div>
               <span className="material-symbols-outlined text-4xl text-[#81ecff] mb-4 block">
                 web
@@ -249,7 +248,7 @@ function Services() {
           </div>
 
           {/* Automatyzacje */}
-          <div className="md:col-span-2 rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[150px] hover:border-[#c3f400]/30 transition-colors">
+          <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[150px] hover:border-[#c3f400]/30 transition-colors">
             <div>
               <span className="material-symbols-outlined text-3xl text-[#c3f400] mb-4 block">
                 bolt
@@ -258,8 +257,7 @@ function Services() {
                 Automatyzacje
               </h3>
               <p className="text-sm text-[#adaaaa] leading-relaxed">
-                Integracje, workflowy, boty, powiadomienia. Połącz narzędzia i
-                zautomatyzuj procesy.
+                Workflowy n8n, integracje API, scrapery, boty Slack/Discord. Łączymy narzędzia w sprawnie działające pipeline&apos;y.
               </p>
             </div>
             <div className="mt-4">
@@ -270,8 +268,29 @@ function Services() {
             </div>
           </div>
 
+          {/* Agenty AI */}
+          <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[150px] hover:border-[#c3f400]/30 transition-colors">
+            <div>
+              <span className="material-symbols-outlined text-3xl text-[#c3f400] mb-4 block">
+                smart_toy
+              </span>
+              <h3 className="text-xl font-bold text-white mb-2">
+                Agenty AI
+              </h3>
+              <p className="text-sm text-[#adaaaa] leading-relaxed">
+                Agenty do researchu, pisania, obsługi klienta, automatyzacji powtarzalnych zadań intelektualnych. Z dostępem do narzędzi i wiedzy.
+              </p>
+            </div>
+            <div className="mt-4">
+              <span className="text-sm text-[#adaaaa]">od</span>
+              <span className="text-2xl font-extrabold text-white ml-2 font-[var(--font-plus-jakarta)]">
+                1499 PLN
+              </span>
+            </div>
+          </div>
+
           {/* Produkty cyfrowe */}
-          <div className="md:col-span-2 rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[150px] hover:border-[#70aaff]/30 transition-colors">
+          <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[150px] hover:border-[#70aaff]/30 transition-colors">
             <div>
               <span className="material-symbols-outlined text-3xl text-[#70aaff] mb-4 block">
                 widgets
@@ -291,11 +310,31 @@ function Services() {
               </span>
             </div>
           </div>
+
+          {/* Redesign */}
+          <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-8 flex flex-col justify-between min-h-[150px] hover:border-[#81ecff]/30 transition-colors">
+            <div>
+              <span className="material-symbols-outlined text-3xl text-[#81ecff] mb-4 block">
+                refresh
+              </span>
+              <h3 className="text-xl font-bold text-white mb-2">
+                Redesign
+              </h3>
+              <p className="text-sm text-[#adaaaa] leading-relaxed">
+                Odświeżamy istniejące strony i aplikacje. Wrzuć URL lub screeny i powiedz co chcesz poprawić.
+              </p>
+            </div>
+            <div className="mt-4">
+              <span className="text-sm text-[#adaaaa]">od</span>
+              <span className="text-2xl font-extrabold text-white ml-2 font-[var(--font-plus-jakarta)]">
+                799 PLN
+              </span>
+            </div>
+          </div>
         </div>
 
         <p className="text-center text-sm text-[#adaaaa] mt-8">
-          Czas realizacji zależy od złożoności - od 48h dla prostych stron po kilka
-          tygodni dla rozbudowanych systemów.
+          Czas i cena zależą od złożoności projektu - od 48h dla prostych narzędzi po kilka tygodni dla rozbudowanych systemów. Po analizie Twojego pomysłu zaproponujemy konkretny pakiet i wycenę.
         </p>
       </div>
     </section>

@@ -111,7 +111,7 @@ export default function ChatInput({
               handleSubmit();
             }
           }}
-          placeholder="Powiedz nam co chcesz postawić..."
+          placeholder="Strona, aplikacja, automatyzacja, agent AI... Opisz swój pomysł."
           rows={3}
           disabled={isLoading}
           className="w-full resize-none bg-transparent text-white placeholder:text-[#adaaaa] outline-none px-2 py-2 text-base disabled:opacity-50"

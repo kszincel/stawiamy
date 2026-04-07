@@ -4,8 +4,9 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 interface Classification {
-  product_type: "website" | "app" | "automation" | "digital_product";
-  package: "digital_product" | "start" | "standard" | "custom";
+  product_type: "website" | "app" | "automation" | "agent" | "digital_product" | "redesign";
+  package: "digital_product" | "start" | "standard" | "custom" | "redesign" | "automation" | "agent";
+  preview_type: "design" | "brief";
   estimated_price: number;
   deposit_amount: number;
   description: string;
@@ -18,6 +19,7 @@ interface GenerateResult {
   classification: Classification;
   previewUrl: string;
   htmlUrl: string;
+  brief?: string;
   sourceScreenshotUrl: string | null;
   sourceUrl: string | null;
 }
@@ -57,7 +59,43 @@ const PACKAGE_CONFIG: Record<
     color: "#c3f400",
   },
   automation: { label: "Automatyzacja", icon: "bolt", color: "#c3f400" },
+  agent: { label: "Agent AI", icon: "smart_toy", color: "#c3f400" },
 };
+
+function BriefRenderer({ brief }: { brief: string }) {
+  const lines = brief.split("\n");
+  return (
+    <div className="space-y-2 font-mono text-sm leading-relaxed">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} className="h-2" />;
+        const headerMatch = trimmed.match(/^\*\*(.+?):\*\*\s*(.*)$/);
+        if (headerMatch) {
+          return (
+            <div key={i} className="pt-2">
+              <span className="font-bold text-[#81ecff]">{headerMatch[1]}:</span>
+              {headerMatch[2] && <span className="text-white ml-2">{headerMatch[2]}</span>}
+            </div>
+          );
+        }
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+        if (numMatch) {
+          return (
+            <div key={i} className="flex gap-3 pl-2">
+              <span className="text-[#c3f400] shrink-0">{numMatch[1]}.</span>
+              <span className="text-white">{numMatch[2]}</span>
+            </div>
+          );
+        }
+        const boldOnly = trimmed.match(/^\*\*(.+?)\*\*$/);
+        if (boldOnly) {
+          return <div key={i} className="font-bold text-[#81ecff] pt-2">{boldOnly[1]}</div>;
+        }
+        return <p key={i} className="text-[#adaaaa]">{trimmed}</p>;
+      })}
+    </div>
+  );
+}
 
 function PreviewContent() {
   const searchParams = useSearchParams();
@@ -294,13 +332,29 @@ function PreviewContent() {
             )}
 
             {/* New design label for redesign */}
-            {(result.sourceScreenshotUrl || sourceImages.length > 0) && (
+            {result.classification.preview_type === "design" && (result.sourceScreenshotUrl || sourceImages.length > 0) && (
               <span className="text-xs font-medium text-[#81ecff] uppercase tracking-wider block">
                 Nowy design
               </span>
             )}
 
-            {/* Screenshot */}
+            {/* Brief (automation/agent) */}
+            {result.classification.preview_type === "brief" && result.brief ? (
+              <div>
+                <p className="text-sm text-[#adaaaa] mb-3">
+                  Tak będzie wyglądać Twoja automatyzacja:
+                </p>
+                <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-8">
+                  <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[#484847]/50">
+                    <span className="material-symbols-outlined text-[#c3f400]">description</span>
+                    <span className="text-sm font-bold text-white uppercase tracking-wider">
+                      Brief techniczny
+                    </span>
+                  </div>
+                  <BriefRenderer brief={result.brief} />
+                </div>
+              </div>
+            ) : (
             <div className="rounded-[0.75rem] border border-[#484847] overflow-hidden bg-[#131313]">
               {/* Browser bar */}
               <div className="flex items-center gap-2 px-4 py-3 bg-[#1a1a1a] border-b border-[#484847]/50">
@@ -320,6 +374,7 @@ function PreviewContent() {
                 className="w-full"
               />
             </div>
+            )}
 
             {/* Cards grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -432,7 +487,7 @@ function PreviewContent() {
             </div>
 
             {/* HTML preview link */}
-            {result.htmlUrl && (
+            {result.classification.preview_type === "design" && result.htmlUrl && (
               <div className="text-center">
                 <a
                   href={result.htmlUrl}

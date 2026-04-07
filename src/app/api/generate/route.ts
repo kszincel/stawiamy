@@ -3,9 +3,29 @@ import { stitch } from "@google/stitch-sdk";
 
 export const maxDuration = 300;
 
+type PackageType =
+  | "digital_product"
+  | "start"
+  | "standard"
+  | "custom"
+  | "redesign"
+  | "automation"
+  | "agent";
+
+type ProductType =
+  | "website"
+  | "app"
+  | "automation"
+  | "agent"
+  | "digital_product"
+  | "redesign";
+
+type PreviewType = "design" | "brief";
+
 interface Classification {
-  product_type: "website" | "app" | "automation" | "digital_product" | "redesign";
-  package: "digital_product" | "start" | "standard" | "custom" | "redesign";
+  product_type: ProductType;
+  package: PackageType;
+  preview_type: PreviewType;
   estimated_price: number;
   deposit_amount: number;
   description: string;
@@ -13,11 +33,11 @@ interface Classification {
   timeline: string;
 }
 
-async function classifyPrompt(prompt: string, hasImages: boolean, hasUrl: boolean): Promise<Classification> {
-  const redesignHint = (hasImages || hasUrl)
-    ? "\n\nUWAGA: Klient przesłał screenshoty istniejącej strony lub podał URL - to prawdopodobnie zlecenie redesignu/ulepszenia."
-    : "";
-
+async function callOpenRouter(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 1500
+): Promise<string> {
   const response = await fetch(
     "https://openrouter.ai/api/v1/chat/completions",
     {
@@ -29,35 +49,10 @@ async function classifyPrompt(prompt: string, hasImages: boolean, hasUrl: boolea
       body: JSON.stringify({
         model: "anthropic/claude-sonnet-4",
         messages: [
-          {
-            role: "system",
-            content: `Jesteś ekspertem od wyceny projektów IT. Na podstawie opisu klienta, sklasyfikuj projekt i wycen go.
-
-Zasady klasyfikacji:
-- Prosty kalkulator, formularz, narzędzie online -> digital_product, 299 PLN
-- Pojedynczy landing page, portfolio, wizytówka -> start, 999 PLN
-- Wielostronicowa aplikacja z auth/bazą danych -> standard, 2999 PLN
-- Złożony system (CRM, marketplace, platforma) -> custom, 4999 PLN lub więcej
-- Automatyzacja, integracja, bot, workflow -> automation, 499 PLN
-- Redesign, ulepszenie istniejącej strony/aplikacji (klient podaje URL lub screeny) -> redesign, od 799 PLN${redesignHint}
-
-Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
-{
-  "product_type": "website" | "app" | "automation" | "digital_product" | "redesign",
-  "package": "digital_product" | "start" | "standard" | "custom" | "redesign",
-  "estimated_price": number (PLN),
-  "deposit_amount": number (30% ceny, zaokrąglone),
-  "description": "1-2 zdania po polsku opisujące co zostanie zbudowane",
-  "features": ["3-5 kluczowych funkcji po polsku"],
-  "timeline": "szacowany czas realizacji po polsku, np. '48 godzin', '5-7 dni'"
-}`,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
-        max_tokens: 1000,
+        max_tokens: maxTokens,
       }),
     }
   );
@@ -68,117 +63,183 @@ Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content.trim();
-  return JSON.parse(content) as Classification;
+  return data.choices[0].message.content.trim();
 }
 
-async function fetchScreenshotFromUrl(url: string): Promise<string | null> {
-  try {
-    const microlinkUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`;
-    const res = await fetch(microlinkUrl);
-    if (res.ok) {
-      // Microlink with embed=screenshot.url redirects to the image URL
-      return res.url || microlinkUrl;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+async function classifyPrompt(
+  prompt: string,
+  hasImages: boolean,
+  hasUrl: boolean
+): Promise<Classification> {
+  const context = hasImages || hasUrl
+    ? "\nUWAGA: Klient podał istniejącą stronę (URL lub screeny) - to prawdopodobnie redesign."
+    : "";
+
+  const systemPrompt = `Jesteś ekspertem od wyceny projektów IT. Sklasyfikuj projekt klienta i wycen go.
+
+Zasady klasyfikacji:
+- Prosty kalkulator, formularz, narzędzie online → product_type: "digital_product", package: "digital_product", 299 PLN, preview_type: "design"
+- Pojedynczy landing page, portfolio, wizytówka → product_type: "website", package: "start", 999 PLN, preview_type: "design"
+- Wielostronicowa aplikacja z auth/bazą danych → product_type: "app", package: "standard", 2999 PLN, preview_type: "design"
+- Złożony system (CRM, marketplace, platforma) → product_type: "app", package: "custom", 4999+ PLN, preview_type: "design"
+- Redesign istniejącej strony/aplikacji → product_type: "redesign", package: "redesign", 799 PLN, preview_type: "design"
+- Automatyzacja, integracja, workflow, bot, scraper → product_type: "automation", package: "automation", 499 PLN, preview_type: "brief"
+- Agent AI (np. agent do pisania artykułów, agent researcher, agent obsługi klienta) → product_type: "agent", package: "agent", 1499 PLN, preview_type: "brief"
+
+WAŻNE:
+- preview_type "design" = produkty wymagające UI (Stitch wygeneruje wizualny preview)
+- preview_type "brief" = automatyzacje/agenty bez UI (zostanie wygenerowany opisowy brief techniczny)
+- deposit_amount = 30% ceny, zaokrąglone do całości
+
+Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
+{
+  "product_type": "...",
+  "package": "...",
+  "preview_type": "design" | "brief",
+  "estimated_price": number,
+  "deposit_amount": number,
+  "description": "1-2 zdania po polsku",
+  "features": ["3-5 kluczowych elementów po polsku"],
+  "timeline": "szacowany czas po polsku"
+}${context}`;
+
+  const content = await callOpenRouter(systemPrompt, prompt, 800);
+  // Strip potential markdown fences
+  const cleaned = content.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+  return JSON.parse(cleaned) as Classification;
 }
 
 async function enhancePromptForStitch(
   prompt: string,
   classification: Classification,
-  url?: string
+  sourceUrl?: string
 ): Promise<string> {
-  const existingSiteContext = url
-    ? `\n\nThe client wants to redesign/improve an existing website at: ${url}. Use this as reference for the current state, but create a significantly improved version with modern design.`
+  const redesignContext = sourceUrl
+    ? `\n\nThis is a REDESIGN of an existing site: ${sourceUrl}. Improve the design while keeping the core purpose. Modernize layout, typography, colors.`
     : "";
 
-  const response = await fetch(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-sonnet-4",
-        messages: [
-          {
-            role: "system",
-            content: `Jesteś designerem UI/UX. Na podstawie opisu klienta, napisz szczegółowy prompt dla generatora UI.
+  const systemPrompt = `You are a senior UI/UX designer writing prompts for Google Stitch (AI UI generator).
 
-Prompt powinien być PO ANGIELSKU i zawierać:
-- Typ strony/aplikacji i jej cel
-- Sekcje i układ (hero, features, pricing, etc.)
-- Styl wizualny (nowoczesny, ciemny motyw, jasny, minimalistyczny)
-- Przykładowe treści (nagłówki, opisy, CTA)
-- Kolorystykę (zaproponuj spójną paletę)
-${classification.product_type === "redesign" ? "\nThis is a REDESIGN project. Focus on improving the existing design while keeping the brand identity. Highlight what should change and what should stay." : ""}
-Napisz TYLKO prompt, bez dodatkowych komentarzy. Maks 500 słów.`,
-          },
-          {
-            role: "user",
-            content: `Opis klienta: ${prompt}\n\nTyp produktu: ${classification.product_type}\nPakiet: ${classification.package}\nOpis: ${classification.description}${existingSiteContext}`,
-          },
-        ],
-        max_tokens: 800,
-      }),
-    }
-  );
+Stitch prompt best practices:
+- Be SPECIFIC about screen type, sections, content, and visual style
+- Use ADJECTIVES to set the vibe (e.g., "vibrant and encouraging", "minimalist and focused", "premium and editorial")
+- Describe the COLOR PALETTE (specific colors or mood-based)
+- Describe TYPOGRAPHY (serif/sans-serif, weight, feel)
+- Describe IMAGERY style (macro photography, illustrations, photos)
+- Mention specific UI components (hero section, feature grid, pricing cards, CTA buttons)
+- Include EXAMPLE COPY (headlines, subheadings, button text)
+- Focus on ONE primary screen (the most important one)
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.status}`);
+Write the prompt in ENGLISH. Do NOT wrap in code blocks. Output the prompt directly. Max 400 words.
+
+Format:
+[Screen type] for [target audience/purpose]. [Vibe adjectives]. [Sections list with brief description]. [Color palette]. [Typography]. [Imagery style]. [Example copy snippets].`;
+
+  const userPrompt = `Client request (translate to English if Polish): ${prompt}
+
+Classification:
+- Type: ${classification.product_type}
+- Package: ${classification.package}
+- Description: ${classification.description}
+- Key features: ${classification.features.join(", ")}${redesignContext}
+
+Generate a detailed Stitch prompt for the most important screen.`;
+
+  return callOpenRouter(systemPrompt, userPrompt, 800);
+}
+
+async function generateBrief(
+  prompt: string,
+  classification: Classification
+): Promise<string> {
+  const systemPrompt = `Jesteś senior automation engineer / AI engineer. Klient opisał potrzebę automatyzacji lub agenta AI.
+
+Twoim zadaniem jest napisanie zwięzłego, ale konkretnego briefu technicznego po polsku, który:
+1. Definiuje cel i problem do rozwiązania (1-2 zdania)
+2. Opisuje proponowane rozwiązanie (architektura, używane narzędzia/API, kluczowe komponenty)
+3. Wymienia konkretne kroki workflow (numbered list, max 6 punktów)
+4. Wskazuje potrzebne integracje (n8n, OpenAI, Claude, Slack, Notion, etc.)
+5. Wskazuje co klient musi dostarczyć (klucze API, dostępy, szablony)
+6. Określa estymowany czas wdrożenia
+
+Format markdown:
+**Cel:** ...
+
+**Rozwiązanie:**
+[opis architektury w 2-3 zdaniach]
+
+**Workflow:**
+1. ...
+2. ...
+
+**Integracje:** [lista]
+
+**Co potrzebujemy od Ciebie:** [lista]
+
+**Czas wdrożenia:** ...
+
+Pisz konkretnie, technicznie, bez marketingowego bełkotu. Klient ma poczuć że wiesz co robisz. Maks 350 słów.`;
+
+  const userPrompt = `Klient prosi o: ${prompt}
+
+Klasyfikacja: ${classification.product_type} (${classification.package})
+Opis: ${classification.description}
+Kluczowe elementy: ${classification.features.join(", ")}
+
+Napisz brief techniczny.`;
+
+  return callOpenRouter(systemPrompt, userPrompt, 1200);
+}
+
+async function fetchScreenshotFromUrl(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`
+    );
+    if (!response.ok) return null;
+    return response.url;
+  } catch {
+    return null;
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content.trim();
 }
 
 export async function POST(request: Request) {
   try {
-    const { prompt, images, url } = await request.json() as {
+    const body = await request.json();
+    const { prompt, images, url } = body as {
       prompt: string;
       images?: string[];
       url?: string;
     };
 
     if (!prompt || typeof prompt !== "string") {
-      return Response.json(
-        { error: "Prompt jest wymagany" },
-        { status: 400 }
-      );
+      return Response.json({ error: "Prompt jest wymagany" }, { status: 400 });
     }
 
-    const hasImages = Array.isArray(images) && images.length > 0;
-    const hasUrl = typeof url === "string" && url.length > 0;
+    // Step 1: Classify
+    const classification = await classifyPrompt(
+      prompt,
+      Boolean(images?.length),
+      Boolean(url)
+    );
 
-    // Fetch screenshot of existing site if URL provided
-    let sourceScreenshotUrl: string | null = null;
-    if (hasUrl) {
-      sourceScreenshotUrl = await fetchScreenshotFromUrl(url);
-    }
-
-    // Step 1: Classify the prompt
-    const classification = await classifyPrompt(prompt, hasImages, hasUrl);
-
-    // Step 2: Create Supabase record
+    // Step 2: Insert into Supabase
     const { data: project, error: insertError } = await supabase
       .from("projects")
       .insert({
         prompt,
         product_type: classification.product_type,
         package: classification.package,
+        preview_type: classification.preview_type,
         estimated_price: classification.estimated_price,
         deposit_amount: classification.deposit_amount,
         description: classification.description,
         features: classification.features,
         timeline: classification.timeline,
-        status: "preview_generating",
         source_url: url || null,
-        source_images: hasImages ? images : null,
+        source_images: images?.length ? images : null,
+        status: "preview_generating",
+        ai_classification: classification,
       })
       .select()
       .single();
@@ -186,45 +247,74 @@ export async function POST(request: Request) {
     if (insertError || !project) {
       console.error("Supabase insert error:", insertError);
       return Response.json(
-        { error: "Nie udało się utworzyć projektu" },
+        {
+          error: `Nie udało się utworzyć projektu: ${insertError?.message || "unknown"}`,
+        },
         { status: 500 }
       );
     }
 
-    // Step 3: Enhance prompt for Stitch
-    const enhancedPrompt = await enhancePromptForStitch(prompt, classification, url || undefined);
+    let previewUrl: string | null = null;
+    let htmlUrl: string | null = null;
+    let brief: string | null = null;
+    let sourceScreenshotUrl: string | null = null;
 
-    // Step 4: Generate design with Stitch
-    const shortPrompt =
-      prompt.length > 60 ? prompt.substring(0, 60) + "..." : prompt;
-    const stitchProject = await stitch.createProject(
-      `Client: ${shortPrompt}`
-    );
-    const screen = await stitchProject.generate(enhancedPrompt, "DESKTOP");
-    const imageUrl = await screen.getImage();
-    const htmlUrl = await screen.getHtml();
-
-    // Step 5: Update Supabase record with Stitch results
-    const { error: updateError } = await supabase
-      .from("projects")
-      .update({
-        stitch_project_id: stitchProject.id,
-        stitch_screen_id: screen.id,
-        screenshot_url: imageUrl,
-        html_url: htmlUrl,
-        status: "preview_ready",
-      })
-      .eq("id", project.id);
-
-    if (updateError) {
-      console.error("Supabase update error:", updateError);
+    // Fetch existing site screenshot if URL provided
+    if (url) {
+      sourceScreenshotUrl = await fetchScreenshotFromUrl(url);
     }
+
+    // Step 3: Generate preview based on type
+    if (classification.preview_type === "brief") {
+      // Generate text brief for automation/agent
+      brief = await generateBrief(prompt, classification);
+    } else {
+      // Generate visual design with Stitch
+      try {
+        const enhancedPrompt = await enhancePromptForStitch(
+          prompt,
+          classification,
+          url
+        );
+
+        const shortPrompt =
+          prompt.length > 60 ? prompt.substring(0, 60) + "..." : prompt;
+        const stitchProject = await stitch.createProject(`Client: ${shortPrompt}`);
+        const screen = await stitchProject.generate(enhancedPrompt, "DESKTOP");
+        previewUrl = await screen.getImage();
+        htmlUrl = await screen.getHtml();
+
+        await supabase
+          .from("projects")
+          .update({
+            stitch_project_id: stitchProject.id,
+            stitch_screen_id: screen.id,
+            preview_screenshot_url: previewUrl,
+            preview_html_url: htmlUrl,
+          })
+          .eq("id", project.id);
+      } catch (stitchError) {
+        console.error("Stitch error:", stitchError);
+        // Don't fail - continue without preview
+      }
+    }
+
+    // Step 4: Update with brief if generated
+    if (brief) {
+      await supabase.from("projects").update({ brief }).eq("id", project.id);
+    }
+
+    await supabase
+      .from("projects")
+      .update({ status: "preview_ready" })
+      .eq("id", project.id);
 
     return Response.json({
       projectId: project.id,
       classification,
-      previewUrl: imageUrl,
+      previewUrl,
       htmlUrl,
+      brief,
       sourceScreenshotUrl,
       sourceUrl: url || null,
     });
