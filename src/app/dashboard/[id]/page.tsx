@@ -7,6 +7,8 @@ import EditDetails from "./EditDetails";
 import PaymentSection from "./PaymentSection";
 import PaymentToast from "./PaymentToast";
 import RecommendedActions from "./RecommendedActions";
+import AdminChat from "./AdminChat";
+import ArtifactViewer from "./ArtifactViewer";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export const dynamic = "force-dynamic";
@@ -406,6 +408,10 @@ export default async function ProjectDetailPage({
             Sekcje widoczne tylko dla admina
           </div>
 
+          <Section title="Chat z Claude">
+            <AdminChat projectId={project.id} />
+          </Section>
+
           {(project.ai_brief || project.brief) && (
             <Section title="Brief AI (admin only)">
               <div className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 leading-relaxed">
@@ -416,11 +422,14 @@ export default async function ProjectDetailPage({
 
           {project.ai_artifact && (
             <Section title="Artefakt AI (admin only)">
-              <pre className="rounded-[0.5rem] bg-[#0e0e0e] border border-[#484847]/50 p-4 text-xs text-white whitespace-pre-wrap font-mono overflow-x-auto">
-                {typeof project.ai_artifact === "string"
-                  ? project.ai_artifact
-                  : JSON.stringify(project.ai_artifact, null, 2)}
-              </pre>
+              <ArtifactViewer
+                projectId={project.id}
+                artifact={
+                  typeof project.ai_artifact === "string"
+                    ? project.ai_artifact
+                    : JSON.stringify(project.ai_artifact, null, 2)
+                }
+              />
             </Section>
           )}
 

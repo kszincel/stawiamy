@@ -11,6 +11,7 @@ const ALLOWED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "text/plain",
   "text/markdown",
+  "application/json",
 ];
 
 const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
