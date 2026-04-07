@@ -201,6 +201,52 @@ export default async function ProjectDetailPage({
         </div>
       </div>
 
+      {/* Delivery progress (e.g. PhD thesis) */}
+      {(() => {
+        const ds = (project.delivery_state as { initialized?: boolean; sections?: Array<{ name: string; status: string; written_at?: string }>; last_section_written?: string } | null) || null;
+        if (!ds || !ds.initialized || !Array.isArray(ds.sections)) return null;
+        const sections = ds.sections;
+        const done = sections.filter((s) => s.status === "done").length;
+        const total = sections.length;
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        return (
+          <Section title="Postęp realizacji">
+            <div className="space-y-4">
+              <div className="flex items-baseline justify-between">
+                <div className="text-2xl font-bold text-[#c3f400]">{done} / {total}</div>
+                <div className="text-xs text-[#adaaaa]">
+                  {ds.last_section_written ? `Ostatnio: ${ds.last_section_written}` : ""}
+                </div>
+              </div>
+              <div className="h-2 rounded-full bg-[#0e0e0e] border border-[#484847]/50 overflow-hidden">
+                <div className="h-full bg-[#c3f400] transition-all" style={{ width: `${pct}%` }} />
+              </div>
+              {project.delivered_file_url && (
+                <a
+                  href={project.delivered_file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#c3f400] text-[#0e0e0e] text-xs font-bold px-4 py-2 hover:opacity-90 transition-opacity"
+                >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  Pobierz aktualną wersję ({project.delivered_file_name || "plik"})
+                </a>
+              )}
+              <ul className="space-y-1.5 max-h-[400px] overflow-y-auto pr-2">
+                {sections.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span className={`material-symbols-outlined text-base mt-0.5 ${s.status === "done" ? "text-[#c3f400]" : "text-[#484847]"}`}>
+                      {s.status === "done" ? "check_circle" : "radio_button_unchecked"}
+                    </span>
+                    <span className={s.status === "done" ? "text-white" : "text-[#adaaaa]"}>{s.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Section>
+        );
+      })()}
+
       {/* Payment section for owner when finalized */}
       {isOwner && !isAdmin && project.status === "finalized" && project.deposit_amount && (
         <PaymentSection
