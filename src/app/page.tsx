@@ -299,31 +299,38 @@ function Showcase() {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Brewpilot - featured */}
+          {/* Brewpilot - featured (left, large) */}
           <a
             href="https://brewpilot.vercel.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="md:col-span-2 group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#81ecff]/30 transition-colors"
+            className="md:col-span-2 md:row-span-2 group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#81ecff]/30 transition-colors flex flex-col"
           >
-            <div className="relative aspect-[16/9] overflow-hidden">
+            <div className="relative flex-1 min-h-[300px] overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://api.microlink.io/?url=https://brewpilot.vercel.app&screenshot=true&meta=false&embed=screenshot.url"
                 alt="Brewpilot - AI coffee brewing assistant"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
               />
             </div>
             <div className="p-6">
               <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-xl font-bold text-white">Brewpilot</h3>
+                <h3 className="text-2xl font-bold text-white">Brewpilot</h3>
                 <span className="material-symbols-outlined text-base text-[#adaaaa] group-hover:text-[#81ecff] transition-colors">
                   arrow_outward
                 </span>
               </div>
-              <p className="text-sm text-[#adaaaa]">
-                AI coffee brewing assistant
+              <p className="text-sm text-[#adaaaa] leading-relaxed">
+                AI coffee brewing assistant. Skanuje opakowanie kawy, dobiera ustawienia młynka i prowadzi krok po kroku przez parzenie.
               </p>
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {["Next.js", "Supabase", "Claude AI"].map((t) => (
+                  <span key={t} className="text-[10px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-2 py-0.5">
+                    {t}
+                  </span>
+                ))}
+              </div>
             </div>
           </a>
 
@@ -334,7 +341,7 @@ function Showcase() {
             rel="noopener noreferrer"
             className="group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#81ecff]/30 transition-colors flex flex-col"
           >
-            <div className="relative aspect-[16/9] overflow-hidden">
+            <div className="relative aspect-[16/10] overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://api.microlink.io/?url=https://makao.kszincel.partykit.dev&screenshot=true&meta=false&embed=screenshot.url"
@@ -342,19 +349,19 @@ function Showcase() {
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
             </div>
-            <div className="p-6 flex flex-col gap-3 flex-1">
+            <div className="p-5 flex flex-col gap-2 flex-1">
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-white">Makao Online</h3>
-                <span className="material-symbols-outlined text-base text-[#adaaaa] group-hover:text-[#81ecff] transition-colors">
+                <h3 className="text-base font-bold text-white">Makao Online</h3>
+                <span className="material-symbols-outlined text-sm text-[#adaaaa] group-hover:text-[#81ecff] transition-colors">
                   arrow_outward
                 </span>
               </div>
-              <p className="text-sm text-[#adaaaa] leading-relaxed">
-                Wieloosobowa gra karciana online. Real-time multiplayer, własny matchmaking, system pokoi.
+              <p className="text-xs text-[#adaaaa] leading-relaxed">
+                Wieloosobowa gra karciana online. Real-time multiplayer.
               </p>
-              <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
-                {["Next.js", "PartyKit", "Tailwind"].map((t) => (
-                  <span key={t} className="text-[10px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-2 py-0.5">
+              <div className="flex flex-wrap gap-1 mt-auto pt-1">
+                {["Next.js", "PartyKit"].map((t) => (
+                  <span key={t} className="text-[9px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-1.5 py-0.5">
                     {t}
                   </span>
                 ))}
@@ -365,45 +372,58 @@ function Showcase() {
           {/* Sales AI Agent */}
           <a
             href="/realizacje/sales-ai-agent"
-            className="md:col-span-2 group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#c3f400]/30 transition-colors flex flex-col"
+            className="group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#c3f400]/30 transition-colors flex flex-col"
           >
-            <div className="relative aspect-[16/6] overflow-hidden bg-gradient-to-br from-[#1a2200] via-[#0e0e0e] to-[#0a1a1f] flex items-center justify-center">
-              <span className="material-symbols-outlined text-7xl text-[#c3f400]/60">
-                smart_toy
-              </span>
+            <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-[#1a2200] via-[#0e1610] to-[#0a1a1f]">
+              {/* Decorative dashboard mockup */}
+              <div className="absolute inset-0 p-3 flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#ff716c]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#c3f400]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#81ecff]" />
+                </div>
+                <div className="flex-1 grid grid-cols-3 gap-1.5">
+                  <div className="bg-[#c3f400]/10 border border-[#c3f400]/20 rounded p-1.5 flex flex-col gap-0.5">
+                    <div className="text-[7px] text-[#c3f400] uppercase tracking-wide">Leady</div>
+                    <div className="text-[14px] font-bold text-white">247</div>
+                  </div>
+                  <div className="bg-[#81ecff]/10 border border-[#81ecff]/20 rounded p-1.5 flex flex-col gap-0.5">
+                    <div className="text-[7px] text-[#81ecff] uppercase tracking-wide">Reply</div>
+                    <div className="text-[14px] font-bold text-white">12%</div>
+                  </div>
+                  <div className="bg-[#70aaff]/10 border border-[#70aaff]/20 rounded p-1.5 flex flex-col gap-0.5">
+                    <div className="text-[7px] text-[#70aaff] uppercase tracking-wide">ROI</div>
+                    <div className="text-[14px] font-bold text-white">4.7x</div>
+                  </div>
+                </div>
+                <div className="bg-[#1a1a1a]/60 border border-[#484847]/40 rounded p-1.5 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[12px] text-[#c3f400]">smart_toy</span>
+                  <div className="flex-1 h-0.5 bg-[#484847] rounded-full overflow-hidden">
+                    <div className="h-full w-3/4 bg-gradient-to-r from-[#c3f400] to-[#81ecff]" />
+                  </div>
+                  <span className="text-[8px] text-[#adaaaa]">running</span>
+                </div>
+              </div>
             </div>
-            <div className="p-6 flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold text-white">Sales AI Agent</h3>
-                <span className="material-symbols-outlined text-base text-[#adaaaa] group-hover:text-[#c3f400] transition-colors">
+            <div className="p-5 flex flex-col gap-2 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">Sales AI Agent</h3>
+                <span className="material-symbols-outlined text-sm text-[#adaaaa] group-hover:text-[#c3f400] transition-colors">
                   arrow_outward
                 </span>
               </div>
-              <p className="text-sm text-[#adaaaa] leading-relaxed">
-                Agent AI który scrapuje LinkedIn, kwalifikuje leady i wysyła spersonalizowane wiadomości outreach. 200+ leadów dziennie.
+              <p className="text-xs text-[#adaaaa] leading-relaxed">
+                Agent AI scrapuje LinkedIn, kwalifikuje leady, wysyła outreach.
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {["n8n", "OpenAI", "LinkedIn API", "Slack"].map((t) => (
-                  <span key={t} className="text-[10px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-2 py-0.5">
+              <div className="flex flex-wrap gap-1 mt-auto pt-1">
+                {["n8n", "OpenAI"].map((t) => (
+                  <span key={t} className="text-[9px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-1.5 py-0.5">
                     {t}
                   </span>
                 ))}
               </div>
-              <span className="text-xs text-[#c3f400] font-semibold mt-1">
-                Zobacz szczegóły &rarr;
-              </span>
             </div>
           </a>
-
-          {/* Placeholder card */}
-          <div className="rounded-[0.5rem] border border-[#484847]/50 bg-[#131313] p-6 flex flex-col items-center justify-center min-h-[180px]">
-            <span className="material-symbols-outlined text-3xl text-[#484847] mb-3">
-              lock_clock
-            </span>
-            <span className="text-sm text-[#484847] font-medium">
-              Wkrótce
-            </span>
-          </div>
         </div>
       </div>
     </section>
