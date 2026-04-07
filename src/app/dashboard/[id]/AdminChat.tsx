@@ -121,16 +121,26 @@ export default function AdminChat({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
       });
-      const data = await res.json();
+      const text_response = await res.text();
+      let data: { error?: string; message?: Message } = {};
+      try {
+        data = JSON.parse(text_response);
+      } catch {
+        // Server returned plain text (likely Vercel timeout/error page)
+        throw new Error(
+          res.status === 504 || text_response.includes("timeout")
+            ? "Timeout - zapytanie trwało zbyt długo. Spróbuj prostszą prośbę lub podziel ją na kroki."
+            : `Błąd serwera (${res.status}): ${text_response.substring(0, 200)}`
+        );
+      }
       if (!res.ok) {
-        throw new Error(data.error || "Błąd wysyłania");
+        throw new Error(data.error || `Błąd serwera (${res.status})`);
       }
       if (data.message) {
         setMessages((prev) => [...prev, data.message as Message]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Błąd wysyłania");
-      // Roll back optimistic message? Keep it so Konrad can retry.
     } finally {
       setSending(false);
     }
