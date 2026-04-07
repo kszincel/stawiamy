@@ -5,6 +5,14 @@ import { createClient } from "@/lib/supabase-browser";
 
 export default function LandingNav() {
   const [email, setEmail] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 100);
+    window.addEventListener("scroll", onScroll);
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -73,7 +81,7 @@ export default function LandingNav() {
           )}
           <a
             href="#cta"
-            className="rounded-full bg-[#81ecff] px-5 py-2.5 text-sm font-bold text-[#005762] hover:bg-[#00d4ec] transition-colors"
+            className={`rounded-full bg-[#81ecff] px-5 py-2.5 text-sm font-bold text-[#005762] hover:bg-[#00d4ec] transition-opacity ${scrolled ? "opacity-100" : "opacity-0 pointer-events-none"}`}
           >
             Opisz pomysł
           </a>

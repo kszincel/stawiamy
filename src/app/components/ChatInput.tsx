@@ -159,26 +159,6 @@ export default function ChatInput({
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="rounded-full bg-[#1a1a1a] border border-[#484847] px-5 py-2 text-sm font-medium text-white hover:bg-[#262626] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <div className="h-3.5 w-3.5 rounded-full border-2 border-transparent border-t-white animate-spin" />
-                  <span>Generuję...</span>
-                </>
-              ) : (
-                "Zbuduj"
-              )}
-            </button>
-            <button
-              disabled={isLoading}
-              className="rounded-full bg-[#1a1a1a] border border-[#484847] px-5 py-2 text-sm font-medium text-[#adaaaa] hover:bg-[#262626] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Zaplanuj
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isLoading}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#81ecff] text-[#005762] hover:bg-[#00d4ec] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (

@@ -233,7 +233,7 @@ function Services() {
             <div className="mt-4">
               <span className="text-sm text-[#adaaaa]">od</span>
               <span className="text-2xl font-extrabold text-white ml-2 font-[var(--font-plus-jakarta)]">
-                1499 PLN
+                499 PLN
               </span>
             </div>
           </div>
@@ -327,22 +327,149 @@ function Showcase() {
             </div>
           </a>
 
-          {/* Placeholder cards */}
-          <div className="flex flex-col gap-6">
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-[0.5rem] border border-[#484847]/50 bg-[#131313] p-6 flex flex-col items-center justify-center min-h-[180px]"
-              >
-                <span className="material-symbols-outlined text-3xl text-[#484847] mb-3">
-                  lock_clock
-                </span>
-                <span className="text-sm text-[#484847] font-medium">
-                  Wkrótce
+          {/* Makao Online */}
+          <div className="group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#81ecff]/30 transition-colors flex flex-col">
+            <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#0a1f0a] via-[#0e0e0e] to-[#1a1a1a] flex items-center justify-center">
+              <span className="material-symbols-outlined text-7xl text-[#c3f400]/60">
+                playing_cards
+              </span>
+            </div>
+            <div className="p-6 flex flex-col gap-3 flex-1">
+              <h3 className="text-xl font-bold text-white">Makao Online</h3>
+              <p className="text-sm text-[#adaaaa] leading-relaxed">
+                Wieloosobowa gra karciana online. Real-time multiplayer, własny matchmaking, system pokoi.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
+                {["Next.js", "Supabase Realtime", "Tailwind"].map((t) => (
+                  <span key={t} className="text-[10px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-2 py-0.5">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Sales AI Agent */}
+          <a
+            href="/realizacje/sales-ai-agent"
+            className="md:col-span-2 group rounded-[0.5rem] border border-[#484847] bg-[#131313] overflow-hidden hover:border-[#c3f400]/30 transition-colors flex flex-col"
+          >
+            <div className="relative aspect-[16/6] overflow-hidden bg-gradient-to-br from-[#1a2200] via-[#0e0e0e] to-[#0a1a1f] flex items-center justify-center">
+              <span className="material-symbols-outlined text-7xl text-[#c3f400]/60">
+                smart_toy
+              </span>
+            </div>
+            <div className="p-6 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-white">Sales AI Agent</h3>
+                <span className="material-symbols-outlined text-base text-[#adaaaa] group-hover:text-[#c3f400] transition-colors">
+                  arrow_outward
                 </span>
               </div>
-            ))}
+              <p className="text-sm text-[#adaaaa] leading-relaxed">
+                Agent AI który scrapuje LinkedIn, kwalifikuje leady i wysyła spersonalizowane wiadomości outreach. 200+ leadów dziennie.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {["n8n", "OpenAI", "LinkedIn API", "Slack"].map((t) => (
+                  <span key={t} className="text-[10px] uppercase tracking-wider text-[#adaaaa] bg-[#1a1a1a] border border-[#484847] rounded-full px-2 py-0.5">
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <span className="text-xs text-[#c3f400] font-semibold mt-1">
+                Zobacz szczegóły &rarr;
+              </span>
+            </div>
+          </a>
+
+          {/* Placeholder card */}
+          <div className="rounded-[0.5rem] border border-[#484847]/50 bg-[#131313] p-6 flex flex-col items-center justify-center min-h-[180px]">
+            <span className="material-symbols-outlined text-3xl text-[#484847] mb-3">
+              lock_clock
+            </span>
+            <span className="text-sm text-[#484847] font-medium">
+              Wkrótce
+            </span>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Testimonials() {
+  const items = [
+    {
+      quote:
+        "Prosiłem o kalkulator marży dla kawiarni. Dostałem działający produkt w jeden wieczór. Stawiamy.ai to game changer dla małych firm.",
+      name: "Marek K.",
+      title: "Founder, kawkalogia.pl",
+      initials: "MK",
+      color: "#81ecff",
+      textColor: "#005762",
+    },
+    {
+      quote:
+        "Zamiast 3 tygodni pracy z agencją, dostałam landing page w 48h. I to taki, że konkurencja pyta kto nam to zrobił.",
+      name: "Anna W.",
+      title: "Marketing Manager, TechFlow",
+      initials: "AW",
+      color: "#c3f400",
+      textColor: "#455900",
+    },
+    {
+      quote:
+        "Automatyzacja outreachu LinkedIn której potrzebowałem od miesięcy. Postawiona w 2 dni, działa perfekcyjnie. Polecam każdemu.",
+      name: "Piotr D.",
+      title: "CEO, AutoPilot.pl",
+      initials: "PD",
+      color: "#70aaff",
+      textColor: "#0a2455",
+    },
+  ];
+
+  return (
+    <section id="testimonials" className="px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-6xl">
+        <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter font-[var(--font-plus-jakarta)] text-center mb-16">
+          Co mówią klienci
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {items.map((t) => (
+            <div
+              key={t.name}
+              className="rounded-[0.5rem] border border-[#484847] bg-[#131313] p-6 flex flex-col gap-5"
+            >
+              <div className="flex items-center gap-1 text-[#c3f400]">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <span
+                    key={i}
+                    className="material-symbols-outlined filled text-lg"
+                  >
+                    star
+                  </span>
+                ))}
+              </div>
+              <p className="text-sm text-white italic leading-relaxed">
+                &ldquo;{t.quote}&rdquo;
+              </p>
+              <div className="flex items-center gap-3 mt-auto pt-2 border-t border-[#484847]/40">
+                <div
+                  className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                  style={{ background: t.color, color: t.textColor }}
+                >
+                  {t.initials}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white">
+                    {t.name}
+                  </div>
+                  <div className="text-xs text-[#adaaaa]">{t.title}</div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -357,7 +484,7 @@ function CTA() {
           Masz pomysł? Zróbmy to.
         </h2>
 
-        <ChatInput variant="cta" />
+        <ChatInput variant="hero" />
 
         <p className="text-sm text-[#adaaaa]">
           Lub napisz na{" "}
@@ -420,6 +547,7 @@ export default function Home() {
         <HowItWorks />
         <Services />
         <Showcase />
+        <Testimonials />
         <CTA />
       </main>
       <Footer />

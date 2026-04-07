@@ -84,7 +84,7 @@ Zasady klasyfikacji:
 - Złożony system (CRM, marketplace, platforma) → product_type: "app", package: "custom", 4999+ PLN, preview_type: "design"
 - Redesign istniejącej strony/aplikacji → product_type: "redesign", package: "redesign", 799 PLN, preview_type: "design"
 - Automatyzacja, integracja, workflow, bot, scraper → product_type: "automation", package: "automation", 499 PLN, preview_type: "brief"
-- Agent AI (np. agent do pisania artykułów, agent researcher, agent obsługi klienta) → product_type: "agent", package: "agent", 1499 PLN, preview_type: "brief"
+- Agent AI (np. agent do pisania artykułów, agent researcher, agent obsługi klienta) → product_type: "agent", package: "agent", 499 PLN, preview_type: "brief"
 
 WAŻNE:
 - preview_type "design" = produkty wymagające UI (Stitch wygeneruje wizualny preview)
