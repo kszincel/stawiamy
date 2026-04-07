@@ -35,9 +35,9 @@ export async function POST(
   }
 
   if (status === "deposit_paid" && !project.ai_processed_at) {
-    const agentWebhook = process.env.N8N_AGENT_WEBHOOK_URL;
-    if (agentWebhook) {
-      fetch(agentWebhook, {
+    const webhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (webhookUrl) {
+      fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

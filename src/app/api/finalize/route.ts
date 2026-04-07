@@ -41,9 +41,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Trigger n8n lead notification webhook (non-blocking - fire and forget).
-    // Agent webhook is triggered separately on deposit_paid via /api/project/[id]/status.
-    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL;
+    // Trigger n8n webhook (non-blocking - fire and forget).
+    // Same webhook handles both lead_finalized and deposit_paid events,
+    // workflow branches based on `type` field.
+    const webhookUrl = process.env.N8N_WEBHOOK_URL;
     if (webhookUrl) {
       fetch(webhookUrl, {
         method: "POST",
