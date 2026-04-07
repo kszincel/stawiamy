@@ -118,32 +118,45 @@ async function enhancePromptForStitch(
     ? `\n\nThis is a REDESIGN of an existing site: ${sourceUrl}. Improve the design while keeping the core purpose. Modernize layout, typography, colors.`
     : "";
 
+  const isApp = classification.product_type === "app";
+  const screenType = isApp ? "Web app dashboard/main screen" : "Desktop website landing page";
+  const layoutHint = isApp
+    ? "Full desktop browser layout - sidebar navigation, main content area, header bar."
+    : "Full desktop website layout (1440px wide). Top navigation bar, hero section with large headline, content sections stacked vertically, footer.";
+
   const systemPrompt = `You are a senior UI/UX designer writing prompts for Google Stitch (AI UI generator).
 
-Stitch prompt best practices:
-- Be SPECIFIC about screen type, sections, content, and visual style
-- Use ADJECTIVES to set the vibe (e.g., "vibrant and encouraging", "minimalist and focused", "premium and editorial")
-- Describe the COLOR PALETTE (specific colors or mood-based)
-- Describe TYPOGRAPHY (serif/sans-serif, weight, feel)
-- Describe IMAGERY style (macro photography, illustrations, photos)
-- Mention specific UI components (hero section, feature grid, pricing cards, CTA buttons)
-- Include EXAMPLE COPY (headlines, subheadings, button text)
-- Focus on ONE primary screen (the most important one)
+CRITICAL RULES:
+1. ALWAYS design for DESKTOP (1440px wide). Never describe mobile screens, never mention "app screens" or "mobile". Stitch tends to default to mobile - you MUST counteract this by being explicit about desktop layout.
+2. Start the prompt with "Desktop website" or "Desktop web app" - this primes Stitch correctly.
+3. Make it FEEL premium and unique, not template-like. Inject personality through specific copy and visual choices.
 
-Write the prompt in ENGLISH. Do NOT wrap in code blocks. Output the prompt directly. Max 400 words.
+Stitch prompt best practices (from official guide):
+- Be SPECIFIC: screen type, sections, content, visual style
+- Use ADJECTIVES for the vibe ("vibrant and encouraging", "minimalist and focused", "premium and editorial", "bold and confident")
+- Describe COLOR PALETTE precisely (hex codes or specific moods like "deep navy with electric coral accents")
+- Describe TYPOGRAPHY (specific font moods - "geometric sans-serif", "editorial serif", "tight tracking, heavy weight")
+- Describe IMAGERY style ("macro photography", "abstract gradients", "editorial portrait photography", "isometric illustrations")
+- Mention SPECIFIC UI components (hero with X, bento grid features, pricing cards, testimonials, etc.)
+- Include CONCRETE example copy (real headlines and CTAs, not placeholders)
+- Focus on ONE primary screen (the homepage/landing/main view)
+- Avoid generic templates - be opinionated about the unique angle
 
-Format:
-[Screen type] for [target audience/purpose]. [Vibe adjectives]. [Sections list with brief description]. [Color palette]. [Typography]. [Imagery style]. [Example copy snippets].`;
+OUTPUT FORMAT:
+Start with "Desktop ${isApp ? "web app" : "website"} for [purpose]."
+Then describe vibe, sections, colors, typography, imagery, example copy.
+Write in ENGLISH. Max 400 words. Output the prompt directly, no markdown.`;
 
-  const userPrompt = `Client request (translate to English if Polish): ${prompt}
+  const userPrompt = `Client request (translate to English if Polish): "${prompt}"
 
 Classification:
 - Type: ${classification.product_type}
-- Package: ${classification.package}
 - Description: ${classification.description}
 - Key features: ${classification.features.join(", ")}${redesignContext}
 
-Generate a detailed Stitch prompt for the most important screen.`;
+TASK: Write a Stitch prompt for ${screenType}. ${layoutHint}
+
+Make it specific, premium, and unique to this client. Avoid generic "modern app" templates - inject character matching the client's actual idea. Use confident, specific copy in your example headlines (not "Welcome to X" or "Discover Y" - real, opinionated copy).`;
 
   return callOpenRouter(systemPrompt, userPrompt, 800);
 }
