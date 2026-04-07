@@ -4,6 +4,35 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const URL_REGEX = /https?:\/\/[^\s,;)}\]]+/gi;
+const ACCEPT = "image/*,application/pdf,.doc,.docx,.txt,.md";
+const MAX_ATTACHMENTS = 5;
+
+export interface Attachment {
+  url: string;
+  filename: string;
+  size: number;
+  type: string;
+}
+
+interface PendingAttachment extends Partial<Attachment> {
+  id: string;
+  filename: string;
+  size: number;
+  type: string;
+  uploading: boolean;
+  error?: string;
+  url?: string;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isImage(type: string) {
+  return type.startsWith("image/");
+}
 
 export default function ChatInput({
   variant = "hero",
@@ -13,45 +42,78 @@ export default function ChatInput({
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const remaining = 3 - images.length;
-    const toAdd = files.slice(0, remaining);
-
-    toAdd.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImages((prev) => {
-          if (prev.length >= 3) return prev;
-          return [...prev, { file, preview: reader.result as string }];
-        });
-      };
-      reader.readAsDataURL(file);
-    });
-
     if (fileInputRef.current) fileInputRef.current.value = "";
+    const remaining = MAX_ATTACHMENTS - attachments.length;
+    const toUpload = files.slice(0, remaining);
+
+    for (const file of toUpload) {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setAttachments((prev) => [
+        ...prev,
+        {
+          id,
+          filename: file.name,
+          size: file.size,
+          type: file.type,
+          uploading: true,
+        },
+      ]);
+
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed");
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === id
+              ? { ...a, uploading: false, url: data.url }
+              : a
+          )
+        );
+      } catch (err) {
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  uploading: false,
+                  error:
+                    err instanceof Error ? err.message : "Błąd uploadu",
+                }
+              : a
+          )
+        );
+      }
+    }
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return;
+    if (attachments.some((a) => a.uploading)) return;
     setIsLoading(true);
     setError(null);
 
-    // Save images to sessionStorage if present (preview page reads them)
-    const base64Images = images.map((img) => img.preview);
-    if (base64Images.length > 0) {
-      sessionStorage.setItem("stawiamy_images", JSON.stringify(base64Images));
-    }
+    const ready: Attachment[] = attachments
+      .filter((a) => a.url && !a.error)
+      .map((a) => ({
+        url: a.url!,
+        filename: a.filename,
+        size: a.size,
+        type: a.type,
+      }));
 
-    // Detect first URL in prompt
     const urlMatch = prompt.match(URL_REGEX);
     const detectedUrl = urlMatch ? urlMatch[0] : null;
 
@@ -61,7 +123,7 @@ export default function ChatInput({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          images: base64Images.length > 0 ? base64Images : undefined,
+          attachments: ready.length > 0 ? ready : undefined,
           url: detectedUrl || undefined,
         }),
       });
@@ -84,34 +146,32 @@ export default function ChatInput({
   if (variant === "cta") {
     return (
       <div className="flex w-full max-w-xl flex-col gap-2">
-      <div className="flex w-full items-center gap-3">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          placeholder="Opisz swój pomysł..."
-          disabled={isLoading}
-          className="flex-1 rounded-full bg-[#1a1a1a] px-6 py-4 text-white placeholder:text-[#adaaaa] outline-none border border-[#484847] focus:border-[#81ecff] transition-colors disabled:opacity-50"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading}
-          className="rounded-full bg-[#81ecff] px-8 py-4 font-semibold text-[#005762] hover:bg-[#00d4ec] transition-colors shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isLoading ? (
-            <>
-              <div className="h-4 w-4 rounded-full border-2 border-transparent border-t-[#005762] animate-spin" />
-              <span>Generuję...</span>
-            </>
-          ) : (
-            "Zbuduj preview"
-          )}
-        </button>
-      </div>
-      {error && (
-        <p className="text-sm text-[#ff716c] px-2">{error}</p>
-      )}
+        <div className="flex w-full items-center gap-3">
+          <input
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            placeholder="Opisz swój pomysł..."
+            disabled={isLoading}
+            className="flex-1 rounded-full bg-[#1a1a1a] px-6 py-4 text-white placeholder:text-[#adaaaa] outline-none border border-[#484847] focus:border-[#81ecff] transition-colors disabled:opacity-50"
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="rounded-full bg-[#81ecff] px-8 py-4 font-semibold text-[#005762] hover:bg-[#00d4ec] transition-colors shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <div className="h-4 w-4 rounded-full border-2 border-transparent border-t-[#005762] animate-spin" />
+                <span>Generuję...</span>
+              </>
+            ) : (
+              "Zbuduj preview"
+            )}
+          </button>
+        </div>
+        {error && <p className="text-sm text-[#ff716c] px-2">{error}</p>}
       </div>
     );
   }
@@ -121,10 +181,10 @@ export default function ChatInput({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT}
         multiple
         className="hidden"
-        onChange={handleImageUpload}
+        onChange={handleFileUpload}
       />
       <div className="rounded-[2rem] bg-[#000000] border border-[#484847] p-4">
         <textarea
@@ -142,48 +202,58 @@ export default function ChatInput({
           className="w-full resize-none bg-transparent text-white placeholder:text-[#adaaaa] outline-none px-2 py-2 text-base disabled:opacity-50"
         />
 
-        {/* Uploaded image thumbnails */}
-        {images.length > 0 && (
-          <div className="flex items-center gap-2 px-2 pb-2">
-            {images.map((img, i) => (
-              <div key={i} className="relative group">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.preview}
-                  alt={`Załącznik ${i + 1}`}
-                  className="h-16 w-16 rounded-lg object-cover border border-[#484847]"
-                />
+        {/* Attachment chips */}
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-2 pb-2">
+            {attachments.map((a) => (
+              <div
+                key={a.id}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
+                  a.error
+                    ? "border-[#ff716c] bg-[#ff716c]/10 text-[#ff716c]"
+                    : "border-[#484847] bg-[#1a1a1a] text-white"
+                }`}
+              >
+                {a.uploading ? (
+                  <div className="h-3 w-3 rounded-full border-2 border-transparent border-t-[#81ecff] animate-spin" />
+                ) : isImage(a.type) ? (
+                  <span className="material-symbols-outlined text-sm text-[#81ecff]">
+                    image
+                  </span>
+                ) : (
+                  <span className="material-symbols-outlined text-sm text-[#c3f400]">
+                    description
+                  </span>
+                )}
+                <span className="max-w-[160px] truncate">{a.filename}</span>
+                <span className="text-[#adaaaa]">
+                  {formatFileSize(a.size)}
+                </span>
                 <button
-                  onClick={() => removeImage(i)}
-                  className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-[#ff716c] text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => removeAttachment(a.id)}
+                  className="text-[#adaaaa] hover:text-white cursor-pointer"
+                  aria-label="Usuń"
                 >
                   &#x2715;
                 </button>
               </div>
             ))}
-            {images.length < 3 && (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="h-16 w-16 rounded-lg border border-dashed border-[#484847] flex items-center justify-center text-[#adaaaa] hover:border-[#767575] transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-xl">add_photo_alternate</span>
-              </button>
-            )}
           </div>
         )}
 
         <div className="flex items-center justify-between pt-2">
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading || images.length >= 3}
+            disabled={isLoading || attachments.length >= MAX_ATTACHMENTS}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-[#484847] text-[#adaaaa] hover:border-[#767575] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Dodaj załącznik"
           >
             <span className="material-symbols-outlined text-xl">add</span>
           </button>
           <div className="flex items-center gap-2">
             <button
               onClick={handleSubmit}
-              disabled={isLoading}
+              disabled={isLoading || attachments.some((a) => a.uploading)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#81ecff] text-[#005762] hover:bg-[#00d4ec] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
@@ -197,9 +267,7 @@ export default function ChatInput({
           </div>
         </div>
       </div>
-      {error && (
-        <p className="text-sm text-[#ff716c] mt-3 px-2">{error}</p>
-      )}
+      {error && <p className="text-sm text-[#ff716c] mt-3 px-2">{error}</p>}
     </div>
   );
 }

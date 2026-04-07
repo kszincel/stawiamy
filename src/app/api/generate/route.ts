@@ -23,6 +23,39 @@ type ProductType =
 
 type PreviewType = "design" | "brief";
 
+interface Attachment {
+  url: string;
+  filename: string;
+  size: number;
+  type: string;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function describeAttachmentType(type: string): string {
+  if (type === "application/pdf") return "PDF";
+  if (type.startsWith("image/")) return "Obraz";
+  if (type.includes("word")) return "Word";
+  if (type === "text/plain") return "Tekst";
+  if (type === "text/markdown") return "Markdown";
+  return type;
+}
+
+function attachmentsBlock(attachments?: Attachment[]): string {
+  if (!attachments || attachments.length === 0) return "";
+  const lines = attachments
+    .map(
+      (a) =>
+        `- ${a.filename} (${describeAttachmentType(a.type)}, ${formatFileSize(a.size)})`
+    )
+    .join("\n");
+  return `\n\nKlient załączył pliki:\n${lines}`;
+}
+
 interface Classification {
   product_type: ProductType;
   package: PackageType;
@@ -112,8 +145,10 @@ Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
 async function enhancePromptForStitch(
   prompt: string,
   classification: Classification,
-  sourceUrl?: string
+  sourceUrl?: string,
+  attachments?: Attachment[]
 ): Promise<string> {
+  void attachments;
   const redesignContext = sourceUrl
     ? `\n\nThis is a REDESIGN of an existing site: ${sourceUrl}. Improve the design while keeping the core purpose. Modernize layout, typography, colors.`
     : "";
@@ -163,7 +198,8 @@ Make it specific, premium, and unique to this client. Avoid generic "modern app"
 
 async function generateBrief(
   prompt: string,
-  classification: Classification
+  classification: Classification,
+  attachments?: Attachment[]
 ): Promise<string> {
   const systemPrompt = `Jesteś senior automation engineer / AI engineer. Klient opisał potrzebę automatyzacji lub agenta AI.
 
@@ -197,9 +233,9 @@ Pisz konkretnie, technicznie, bez marketingowego bełkotu. Klient ma poczuć że
 
 Klasyfikacja: ${classification.product_type} (${classification.package})
 Opis: ${classification.description}
-Kluczowe elementy: ${classification.features.join(", ")}
+Kluczowe elementy: ${classification.features.join(", ")}${attachmentsBlock(attachments)}
 
-Napisz brief techniczny.`;
+Napisz brief techniczny. Jeśli klient załączył pliki, odnieś się do nich w briefie (np. wskaż gdzie zostaną wykorzystane jako źródło danych lub kontekst).`;
 
   return callOpenRouter(systemPrompt, userPrompt, 1200);
 }
@@ -207,11 +243,14 @@ Napisz brief techniczny.`;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { prompt, images, url } = body as {
+    const { prompt, attachments, url } = body as {
       prompt: string;
-      images?: string[];
+      attachments?: Attachment[];
       url?: string;
     };
+    const imageAttachments = (attachments || []).filter((a) =>
+      a.type.startsWith("image/")
+    );
 
     if (!prompt || typeof prompt !== "string") {
       return Response.json({ error: "Prompt jest wymagany" }, { status: 400 });
@@ -220,7 +259,7 @@ export async function POST(request: Request) {
     // Step 1: Classify (fast - ~3s)
     const classification = await classifyPrompt(
       prompt,
-      Boolean(images?.length),
+      imageAttachments.length > 0,
       Boolean(url)
     );
 
@@ -238,7 +277,10 @@ export async function POST(request: Request) {
         features: classification.features,
         timeline: classification.timeline,
         source_url: url || null,
-        source_images: images?.length ? images : null,
+        source_images: imageAttachments.length
+          ? imageAttachments.map((a) => a.url)
+          : null,
+        attachments: attachments?.length ? attachments : [],
         status: "preview_generating",
         ai_classification: classification,
       })
@@ -261,14 +303,15 @@ export async function POST(request: Request) {
         const updates: Record<string, unknown> = {};
 
         if (classification.preview_type === "brief") {
-          const brief = await generateBrief(prompt, classification);
+          const brief = await generateBrief(prompt, classification, attachments);
           updates.brief = brief;
         } else {
           try {
             const enhancedPrompt = await enhancePromptForStitch(
               prompt,
               classification,
-              url
+              url,
+              attachments
             );
 
             const shortPrompt =

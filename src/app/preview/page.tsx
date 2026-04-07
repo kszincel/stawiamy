@@ -23,6 +23,80 @@ type PackageKey =
 
 type PreviewType = "design" | "brief";
 
+interface Attachment {
+  url: string;
+  filename: string;
+  size: number;
+  type: string;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentIcon(type: string): string {
+  if (type === "application/pdf") return "picture_as_pdf";
+  if (type.startsWith("image/")) return "image";
+  return "description";
+}
+
+function AttachmentsCard({ attachments }: { attachments: Attachment[] }) {
+  if (!attachments || attachments.length === 0) return null;
+  return (
+    <div>
+      <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-3 block">
+        Załączniki
+      </span>
+      <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-6">
+        <ul className="space-y-3">
+          {attachments.map((a, i) => {
+            const isImg = a.type.startsWith("image/");
+            return (
+              <li key={i} className="flex items-center gap-4">
+                {isImg ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={a.url}
+                    alt={a.filename}
+                    className="h-12 w-12 rounded-[0.5rem] border border-[#484847] object-cover bg-[#0e0e0e]"
+                  />
+                ) : (
+                  <div className="h-12 w-12 rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[#c3f400]">
+                      {attachmentIcon(a.type)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-white truncate">
+                    {a.filename}
+                  </div>
+                  <div className="text-xs text-[#adaaaa]">
+                    {formatFileSize(a.size)}
+                  </div>
+                </div>
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#81ecff] hover:underline text-sm shrink-0 inline-flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    download
+                  </span>
+                  Pobierz
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 interface Project {
   id: string;
   prompt: string;
@@ -40,6 +114,7 @@ interface Project {
   preview_screenshot_url: string | null;
   preview_html_url: string | null;
   brief: string | null;
+  attachments: Attachment[] | null;
 }
 
 const LOADING_MESSAGES = [
@@ -337,6 +412,10 @@ function PreviewContent() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {project.attachments && project.attachments.length > 0 && (
+              <AttachmentsCard attachments={project.attachments} />
             )}
 
             {project.preview_type === "design" && (sourceScreenshotUrl || sourceImages.length > 0) && (

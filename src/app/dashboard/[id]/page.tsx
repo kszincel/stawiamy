@@ -20,6 +20,25 @@ function formatDate(d: string | null) {
   });
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentIcon(type: string): string {
+  if (type === "application/pdf") return "picture_as_pdf";
+  if (type.startsWith("image/")) return "image";
+  return "description";
+}
+
+interface Attachment {
+  url: string;
+  filename: string;
+  size: number;
+  type: string;
+}
+
 function formatPrice(n: number | null) {
   if (!n) return "—";
   return `${n.toLocaleString("pl-PL")} PLN`;
@@ -97,6 +116,7 @@ export default async function ProjectDetailPage({
   const features: string[] = Array.isArray(project.features) ? project.features : [];
   const details = (project.details as Record<string, unknown>) || {};
   const sourceImages: string[] = Array.isArray(project.source_images) ? project.source_images : [];
+  const attachments: Attachment[] = Array.isArray(project.attachments) ? project.attachments : [];
   const missingInfo: string[] = Array.isArray(project.ai_missing_info) ? project.ai_missing_info : [];
 
   const isOwner = !!user?.email && project.contact_email === user.email;
@@ -284,6 +304,54 @@ export default async function ProjectDetailPage({
               ))}
             </div>
           )}
+        </Section>
+      )}
+
+      {/* Attachments */}
+      {attachments.length > 0 && (
+        <Section title="Załączniki">
+          <ul className="space-y-3">
+            {attachments.map((a, i) => {
+              const isImg = a.type.startsWith("image/");
+              return (
+                <li key={i} className="flex items-center gap-4">
+                  {isImg ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={a.url}
+                      alt={a.filename}
+                      className="h-12 w-12 rounded-[0.5rem] border border-[#484847] object-cover bg-[#0e0e0e]"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[#c3f400]">
+                        {attachmentIcon(a.type)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-white truncate">
+                      {a.filename}
+                    </div>
+                    <div className="text-xs text-[#adaaaa]">
+                      {formatFileSize(a.size)}
+                    </div>
+                  </div>
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#81ecff] hover:underline text-sm shrink-0 inline-flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      download
+                    </span>
+                    Pobierz
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
         </Section>
       )}
 
