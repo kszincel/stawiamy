@@ -113,6 +113,13 @@ export default async function ProjectDetailPage({
 
   if (!project) notFound();
 
+  // Auth check: admin sees all, owner sees own (by user_id or contact_email)
+  if (!isAdmin) {
+    const isOwnerByEmail = !!user?.email && project.contact_email === user.email;
+    const isOwnerById = !!user?.id && project.user_id === user.id;
+    if (!isOwnerByEmail && !isOwnerById) notFound();
+  }
+
   const features: string[] = Array.isArray(project.features) ? project.features : [];
   const details = (project.details as Record<string, unknown>) || {};
   const sourceImages: string[] = Array.isArray(project.source_images) ? project.source_images : [];

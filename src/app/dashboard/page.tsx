@@ -38,12 +38,21 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   const isAdmin = user?.email === "konrad@ikonmedia.pl";
 
-  const { data: projects, error } = await supabase
+  let query = supabase
     .from("projects")
     .select(
       "id, prompt, product_type, package, estimated_price, status, contact_email, contact_name, preview_screenshot_url, created_at"
     )
     .order("created_at", { ascending: false });
+
+  // Non-admin sees only their own projects (by user_id or contact_email)
+  if (!isAdmin && user) {
+    query = query.or(
+      `user_id.eq.${user.id},contact_email.eq.${user.email}`
+    );
+  }
+
+  const { data: projects, error } = await query;
 
   const list: Project[] = (projects ?? []) as Project[];
 
