@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import Link from "next/link";
 import { StatusBadge } from "./status";
+import ChatInput from "../components/ChatInput";
 
 export const dynamic = "force-dynamic";
 
@@ -56,15 +57,26 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-1">
-          {isAdmin ? "Wszystkie projekty" : "Twoje projekty"}
-        </h1>
-        <p className="text-sm text-[#adaaaa]">
-          {list.length === 0
-            ? "Brak projektów"
-            : `${list.length} ${list.length === 1 ? "projekt" : list.length < 5 ? "projekty" : "projektów"}`}
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-1">
+            {isAdmin ? "Wszystkie projekty" : "Twoje projekty"}
+          </h1>
+          <p className="text-sm text-[#adaaaa]">
+            {list.length === 0
+              ? "Brak projektów"
+              : `${list.length} ${list.length === 1 ? "projekt" : list.length < 5 ? "projekty" : "projektów"}`}
+          </p>
+        </div>
+        {list.length > 0 && (
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-full bg-[#81ecff] px-5 py-2.5 text-sm font-bold text-[#005762] hover:bg-[#00d4ec] transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            Nowy projekt
+          </Link>
+        )}
       </div>
 
       {error && (
@@ -112,20 +124,14 @@ export default async function DashboardPage() {
       )}
 
       {list.length === 0 ? (
-        <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-12 text-center">
-          <span className="material-symbols-outlined text-5xl text-[#484847] mb-4 block">
-            inbox
-          </span>
-          <h2 className="text-lg font-bold text-white mb-2">Brak projektów</h2>
-          <p className="text-sm text-[#adaaaa] mb-6">
-            Wróć na stronę główną i opisz swój pomysł.
+        <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-8 md:p-12 flex flex-col items-center text-center">
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter text-white mb-3 font-[var(--font-plus-jakarta)]">
+            Stwórz swój pierwszy projekt
+          </h2>
+          <p className="text-sm text-[#adaaaa] mb-8 max-w-xl">
+            Opisz czego potrzebujesz - dostaniesz preview lub brief w kilka minut.
           </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full bg-[#c3f400] text-[#0e0e0e] font-bold px-6 py-3 text-sm hover:opacity-90 transition-opacity"
-          >
-            Stwórz projekt
-          </Link>
+          <ChatInput variant="hero" />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

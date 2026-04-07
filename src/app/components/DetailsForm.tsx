@@ -2,10 +2,25 @@
 
 import { useMemo, useState } from "react";
 
+interface DetailsFormInitialValues {
+  values?: Record<string, string | string[]>;
+  email?: string;
+  name?: string;
+  notes?: string;
+}
+
 interface DetailsFormProps {
   projectId: string;
   productType: "website" | "app" | "automation" | "agent" | "digital_product" | "redesign";
   onSuccess: () => void;
+  mode?: "create" | "edit";
+  initialValues?: DetailsFormInitialValues;
+  onSubmitOverride?: (payload: {
+    projectId: string;
+    email: string;
+    name?: string;
+    details: Record<string, unknown>;
+  }) => Promise<void>;
 }
 
 type FieldType = "text" | "textarea" | "select" | "multiselect" | "email";
@@ -101,13 +116,23 @@ function getFieldsForType(type: DetailsFormProps["productType"]): FieldDef[] {
 const inputClass =
   "w-full rounded-[0.5rem] bg-[#1a1a1a] border border-[#484847] px-4 py-3 text-white placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#81ecff] transition-colors";
 
-export default function DetailsForm({ projectId, productType, onSuccess }: DetailsFormProps) {
+export default function DetailsForm({
+  projectId,
+  productType,
+  onSuccess,
+  mode = "create",
+  initialValues,
+  onSubmitOverride,
+}: DetailsFormProps) {
   const fields = useMemo(() => getFieldsForType(productType), [productType]);
+  const isEdit = mode === "edit";
 
-  const [values, setValues] = useState<Record<string, string | string[]>>({});
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [notes, setNotes] = useState("");
+  const [values, setValues] = useState<Record<string, string | string[]>>(
+    initialValues?.values || {}
+  );
+  const [email, setEmail] = useState(initialValues?.email || "");
+  const [name, setName] = useState(initialValues?.name || "");
+  const [notes, setNotes] = useState(initialValues?.notes || "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -148,14 +173,18 @@ export default function DetailsForm({ projectId, productType, onSuccess }: Detai
     if (notes) details.additional_notes = notes;
 
     try {
-      const res = await fetch("/api/finalize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, email, name: name || undefined, details }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Błąd serwera (${res.status})`);
+      if (onSubmitOverride) {
+        await onSubmitOverride({ projectId, email, name: name || undefined, details });
+      } else {
+        const res = await fetch("/api/finalize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, email, name: name || undefined, details }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Błąd serwera (${res.status})`);
+        }
       }
       onSuccess();
     } catch (err) {
@@ -253,9 +282,13 @@ export default function DetailsForm({ projectId, productType, onSuccess }: Detai
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Doprecyzuj projekt</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {isEdit ? "Edytuj szczegóły" : "Doprecyzuj projekt"}
+        </h2>
         <p className="text-sm text-[#adaaaa]">
-          Im więcej szczegółów, tym lepszy efekt. Wszystkie odpowiedzi pomagają nam dostarczyć dokładnie to czego potrzebujesz.
+          {isEdit
+            ? "Zaktualizuj odpowiedzi i dane kontaktowe. Zmiany są widoczne natychmiast."
+            : "Im więcej szczegółów, tym lepszy efekt. Wszystkie odpowiedzi pomagają nam dostarczyć dokładnie to czego potrzebujesz."}
         </p>
       </div>
 
@@ -313,7 +346,13 @@ export default function DetailsForm({ projectId, productType, onSuccess }: Detai
         disabled={submitting}
         className="w-full rounded-full bg-[#81ecff] py-4 text-center font-semibold text-[#005762] hover:bg-[#00d4ec] transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
       >
-        {submitting ? "Wysyłanie..." : "Wyślij i otrzymaj brief"}
+        {submitting
+          ? isEdit
+            ? "Zapisywanie..."
+            : "Wysyłanie..."
+          : isEdit
+          ? "Zapisz zmiany"
+          : "Wyślij i otrzymaj brief"}
       </button>
     </form>
   );

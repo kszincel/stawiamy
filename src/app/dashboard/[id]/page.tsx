@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "../status";
 import StatusUpdater from "./StatusUpdater";
+import EditDetails from "./EditDetails";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +158,28 @@ export default async function ProjectDetailPage({
           <StatusUpdater
             projectId={project.id}
             currentStatus={project.status || "preview_generating"}
+          />
+        </Section>
+      )}
+
+      {/* Owner edit (only when not admin and email matches) */}
+      {!isAdmin && user?.email && project.contact_email === user.email && (
+        <Section title="Twoje dane">
+          <EditDetails
+            projectId={project.id}
+            productType={(project.product_type || "website") as
+              | "website"
+              | "app"
+              | "automation"
+              | "agent"
+              | "digital_product"
+              | "redesign"}
+            prompt={project.prompt}
+            details={(project.details as Record<string, unknown>) || null}
+            contactEmail={project.contact_email}
+            contactName={project.contact_name}
+            sourceUrl={project.source_url}
+            status={project.status}
           />
         </Section>
       )}

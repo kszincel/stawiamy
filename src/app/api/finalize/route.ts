@@ -41,14 +41,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Trigger n8n agent webhook (non-blocking - fire and forget)
-    const webhookUrl = process.env.N8N_AGENT_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL;
+    // Trigger n8n lead notification webhook (non-blocking - fire and forget).
+    // Agent webhook is triggered separately on deposit_paid via /api/project/[id]/status.
+    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL;
     if (webhookUrl) {
       fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "project_finalized",
+          type: "lead_finalized",
           projectId: project.id,
           prompt: project.prompt,
           product_type: project.product_type,

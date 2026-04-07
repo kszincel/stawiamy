@@ -2,5 +2,4 @@ node_modules
 .next
 .env.local
 .vercel
-n8n-contact-webhook.json
-n8n-agent-workflow.json
+n8n-*.json
