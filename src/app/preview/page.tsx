@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
+import DetailsForm from "../components/DetailsForm";
 
 interface Classification {
   product_type: "website" | "app" | "automation" | "agent" | "digital_product" | "redesign";
@@ -109,6 +110,7 @@ function PreviewContent() {
   const [error, setError] = useState<string>("");
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [sourceImages, setSourceImages] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
 
   // Read images from sessionStorage on mount
   useEffect(() => {
@@ -465,25 +467,35 @@ function PreviewContent() {
                   </ul>
                 </div>
 
-                <div className="space-y-3">
-                  <a
-                    href={`mailto:konrad@ikonmedia.pl?subject=Zamówienie: ${packageInfo.label}&body=Cześć! Chcę zamówić projekt na podstawie wygenerowanego preview.%0A%0AOpis: ${encodeURIComponent(prompt)}%0ACena: ${result.classification.estimated_price} PLN%0AZaliczka: ${result.classification.deposit_amount} PLN`}
-                    className="block w-full rounded-full bg-[#81ecff] py-4 text-center font-semibold text-[#005762] hover:bg-[#00d4ec] transition-colors"
-                  >
-                    Zamów za{" "}
-                    {result.classification.deposit_amount.toLocaleString(
-                      "pl-PL"
-                    )}{" "}
-                    PLN
-                  </a>
-                  <a
-                    href="/#contact"
-                    className="block w-full text-center text-sm text-[#adaaaa] hover:text-white transition-colors py-2"
-                  >
-                    Chcesz porozmawiać o szczegółach?
-                  </a>
-                </div>
+                <p className="text-sm text-[#adaaaa] leading-relaxed">
+                  Wypełnij formularz poniżej żeby otrzymać szczegółowy brief i wycenę.
+                </p>
               </div>
+            </div>
+
+            {/* Details form / success */}
+            <div className="pt-4 border-t border-[#484847]/30">
+              {submitted ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-6 text-center animate-fade-in">
+                  <div className="h-16 w-16 rounded-full bg-[#81ecff]/10 border border-[#81ecff] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-3xl text-[#81ecff]">check</span>
+                  </div>
+                  <div className="max-w-lg">
+                    <h2 className="text-2xl font-bold text-white mb-3">Świetnie!</h2>
+                    <p className="text-[#adaaaa] leading-relaxed">
+                      Otrzymaliśmy Twoje zgłoszenie. Doprecyzowany brief, plan działania i wycenę przyślemy na maila w ciągu kilku minut.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-8">
+                  <DetailsForm
+                    projectId={result.projectId}
+                    productType={result.classification.product_type}
+                    onSuccess={() => setSubmitted(true)}
+                  />
+                </div>
+              )}
             </div>
 
             {/* HTML preview link */}
