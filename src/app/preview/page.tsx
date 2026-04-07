@@ -115,6 +115,82 @@ interface Project {
   preview_html_url: string | null;
   brief: string | null;
   attachments: Attachment[] | null;
+  contact_email: string | null;
+}
+
+function SubmittedSuccess({ projectId, contactEmail }: { projectId: string; contactEmail: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const projectUrl = typeof window !== "undefined" ? `${window.location.origin}/preview?id=${projectId}` : "";
+
+  async function copyLink() {
+    await navigator.clipboard.writeText(projectUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function resendMagicLink() {
+    if (!contactEmail) return;
+    setResendState("sending");
+    try {
+      const res = await fetch("/api/auth/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: contactEmail, projectId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setResendState("sent");
+      setTimeout(() => setResendState("idle"), 5000);
+    } catch {
+      setResendState("error");
+      setTimeout(() => setResendState("idle"), 5000);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 gap-6 text-center animate-fade-in">
+      <div className="h-16 w-16 rounded-full bg-[#81ecff]/10 border border-[#81ecff] flex items-center justify-center">
+        <span className="material-symbols-outlined text-3xl text-[#81ecff]">check</span>
+      </div>
+      <div className="max-w-lg">
+        <h2 className="text-2xl font-bold text-white mb-3">Świetnie!</h2>
+        <p className="text-[#adaaaa] leading-relaxed mb-2">
+          Otrzymaliśmy Twoje zgłoszenie. Aby kontynuować (zapłacić zaliczkę i śledzić postęp), zapisz sobie ten link do projektu:
+        </p>
+      </div>
+
+      {/* Project URL with copy button */}
+      <div className="w-full max-w-lg flex items-center gap-2 rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-2">
+        <code className="flex-1 text-xs text-[#81ecff] truncate px-2 font-mono">{projectUrl}</code>
+        <button
+          onClick={copyLink}
+          className="flex-shrink-0 rounded-[0.25rem] bg-[#c3f400] text-[#0e0e0e] font-bold px-4 py-2 text-xs hover:opacity-90 transition-opacity"
+        >
+          {copied ? "Skopiowane ✓" : "Kopiuj"}
+        </button>
+      </div>
+
+      <p className="text-xs text-[#adaaaa] max-w-md">
+        Wysłaliśmy też magic link na <strong className="text-white">{contactEmail}</strong> - kliknij go żeby zalogować się i śledzić postęp w panelu klienta. Sprawdź też folder spam.
+      </p>
+
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <button
+          onClick={resendMagicLink}
+          disabled={resendState === "sending" || !contactEmail}
+          className="rounded-full border border-[#484847] text-[#adaaaa] hover:text-white hover:border-[#81ecff] font-medium px-5 py-2.5 text-sm transition-colors disabled:opacity-40"
+        >
+          {resendState === "sending" ? "Wysyłanie..." : resendState === "sent" ? "Wysłano ✓" : resendState === "error" ? "Błąd, spróbuj ponownie" : "Wyślij magic link ponownie"}
+        </button>
+        <a
+          href={`/preview?id=${projectId}`}
+          className="rounded-full bg-[#81ecff] text-[#005762] font-bold px-5 py-2.5 text-sm hover:opacity-90 transition-opacity"
+        >
+          Otwórz projekt
+        </a>
+      </div>
+    </div>
+  );
 }
 
 const LOADING_MESSAGES = [
@@ -558,26 +634,7 @@ function PreviewContent() {
             {/* Details form / success */}
             <div className="pt-4 border-t border-[#484847]/30">
               {submitted || isFinalized ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-6 text-center animate-fade-in">
-                  <div className="h-16 w-16 rounded-full bg-[#81ecff]/10 border border-[#81ecff] flex items-center justify-center">
-                    <span className="material-symbols-outlined text-3xl text-[#81ecff]">check</span>
-                  </div>
-                  <div className="max-w-lg">
-                    <h2 className="text-2xl font-bold text-white mb-3">Świetnie!</h2>
-                    <p className="text-[#adaaaa] leading-relaxed mb-2">
-                      Otrzymaliśmy Twoje zgłoszenie. Doprecyzowany brief, plan działania i wycenę przyślemy na maila w ciągu kilku minut.
-                    </p>
-                    <p className="text-[#adaaaa] leading-relaxed">
-                      Wysłaliśmy też magic link na Twojego maila - kliknij go, żeby śledzić postęp w panelu klienta.
-                    </p>
-                  </div>
-                  <a
-                    href="/dashboard"
-                    className="rounded-full bg-[#c3f400] text-[#0e0e0e] font-bold px-6 py-3 text-sm hover:opacity-90 transition-opacity"
-                  >
-                    Idź do panelu
-                  </a>
-                </div>
+                <SubmittedSuccess projectId={project.id} contactEmail={project.contact_email} />
               ) : (
                 <div className="pt-8">
                   <DetailsForm
