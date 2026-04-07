@@ -41,39 +41,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Trigger n8n webhook (non-blocking - fire and forget).
-    // Same webhook handles both lead_finalized and deposit_paid events,
-    // workflow branches based on `type` field.
-    const webhookUrl = process.env.N8N_WEBHOOK_URL;
-    if (webhookUrl) {
-      fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "lead_finalized",
-          projectId: project.id,
-          prompt: project.prompt,
-          product_type: project.product_type,
-          package: project.package,
-          preview_type: project.preview_type,
-          estimated_price: project.estimated_price,
-          deposit_amount: project.deposit_amount,
-          description: project.description,
-          features: project.features,
-          timeline: project.timeline,
-          brief: project.brief,
-          preview_screenshot_url: project.preview_screenshot_url,
-          preview_html_url: project.preview_html_url,
-          source_url: project.source_url,
-          details,
-          contact_email: email,
-          contact_name: name,
-          timestamp: new Date().toISOString(),
-        }),
-      }).catch((err) => {
-        console.error("n8n webhook failed:", err);
-      });
-    }
+    // No n8n webhook here - it only fires after deposit payment via /api/project/[id]/status
 
     // Send magic link so user can track progress in dashboard (best-effort)
     try {
