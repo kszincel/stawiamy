@@ -12,6 +12,10 @@ You have full context of this project and can MODIFY it using tools:
 - update_missing_info - update the list of missing/blocking info from client
 - update_recommended_actions - update the action checklist for Konrad
 - update_status - change project status
+- send_client_email - send a markdown email to the client (contact_email) via Resend
+- notify_slack - post a message to the stawiamy.ai Slack channel (supports urgent flag)
+- generate_n8n_workflow - generate a real importable n8n workflow JSON and save as artifact
+- add_admin_note - append an admin-only note to the project
 
 When Konrad asks you to update something, USE THE TOOL. Don't just describe the change - apply it.
 You can call multiple tools in sequence. After all tools are done, give a brief summary in Polish.
@@ -150,7 +154,105 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "send_client_email",
+      description:
+        "Send an email to the project's contact_email via Resend. Body is markdown and will be converted to HTML.",
+      parameters: {
+        type: "object",
+        properties: {
+          subject: { type: "string", description: "Email subject in Polish" },
+          body: { type: "string", description: "Email body in markdown (Polish)" },
+        },
+        required: ["subject", "body"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "notify_slack",
+      description:
+        "Post a message to the stawiamy.ai Slack channel. Use urgent=true for critical alerts.",
+      parameters: {
+        type: "object",
+        properties: {
+          message: { type: "string", description: "Message body in Polish" },
+          urgent: { type: "boolean", description: "If true, prefix with alert emoji" },
+        },
+        required: ["message"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_n8n_workflow",
+      description:
+        "Generate a real importable n8n workflow JSON based on a description. Saves as the project's artifact.",
+      parameters: {
+        type: "object",
+        properties: {
+          description: {
+            type: "string",
+            description: "What the workflow should do (Polish or English)",
+          },
+        },
+        required: ["description"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_admin_note",
+      description: "Append an admin-only note to the project (not visible to client).",
+      parameters: {
+        type: "object",
+        properties: {
+          note: { type: "string", description: "Note content in Polish" },
+        },
+        required: ["note"],
+      },
+    },
+  },
 ];
+
+function markdownToHtml(md: string): string {
+  const lines = md.split("\n");
+  const out: string[] = [];
+  let inList = false;
+  for (const raw of lines) {
+    const line = raw;
+    if (/^\s*[-*]\s+/.test(line)) {
+      if (!inList) {
+        out.push("<ul>");
+        inList = true;
+      }
+      out.push(
+        "<li>" +
+          line.replace(/^\s*[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") +
+          "</li>"
+      );
+      continue;
+    }
+    if (inList) {
+      out.push("</ul>");
+      inList = false;
+    }
+    if (/^##\s+/.test(line)) {
+      out.push("<h2>" + line.replace(/^##\s+/, "").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") + "</h2>");
+    } else if (line.trim() === "") {
+      out.push("<br>");
+    } else {
+      out.push(line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") + "<br>");
+    }
+  }
+  if (inList) out.push("</ul>");
+  return out.join("\n");
+}
 
 async function executeTool(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -189,6 +291,141 @@ async function executeTool(
         .update({ status: String(args.status || "preview_ready") })
         .eq("id", projectId);
       return `Status zmieniony na ${args.status}.`;
+    case "send_client_email": {
+      const subject = String(args.subject || "");
+      const body = String(args.body || "");
+      const { data: projectRow } = await supabase
+        .from("projects")
+        .select("contact_email")
+        .eq("id", projectId)
+        .single();
+      const to = projectRow?.contact_email as string | null;
+      if (!to) return "Błąd: projekt nie ma contact_email.";
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) return "Błąd: brak RESEND_API_KEY w środowisku.";
+      const html = markdownToHtml(body);
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          from: "konrad@ikonmedia.pl",
+          to,
+          subject,
+          html,
+        }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        return `Błąd Resend ${res.status}: ${txt}`;
+      }
+      await supabase.from("client_emails").insert({
+        project_id: projectId,
+        subject,
+        body,
+      });
+      return `Email wysłany do ${to}`;
+    }
+    case "notify_slack": {
+      const message = String(args.message || "");
+      const urgent = Boolean(args.urgent);
+      const prefix = urgent ? "🚨 " : "";
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://stawiamy.ai";
+      const projectLink = `${baseUrl}/dashboard/${projectId}`;
+      const text = `${prefix}${message}\n<${projectLink}|Otwórz projekt>`;
+      const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+      if (!slackWebhookUrl) return "Błąd: brak SLACK_WEBHOOK_URL.";
+      const res = await fetch(
+        slackWebhookUrl,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text },
+              },
+            ],
+          }),
+        }
+      );
+      if (!res.ok) {
+        return `Błąd Slack ${res.status}`;
+      }
+      return "Wiadomość wysłana na Slack.";
+    }
+    case "generate_n8n_workflow": {
+      const description = String(args.description || "");
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey) return "Błąd: brak OPENROUTER_API_KEY.";
+      const res = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "anthropic/claude-sonnet-4",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are an n8n workflow expert. Generate a complete, importable n8n workflow JSON. Use real n8n node types like n8n-nodes-base.webhook, n8n-nodes-base.httpRequest, n8n-nodes-base.openAi, n8n-nodes-base.if, n8n-nodes-base.set, n8n-nodes-base.code, n8n-nodes-base.scheduleTrigger. Each node needs: id, name, type, typeVersion, position, parameters. Workflow needs: name, nodes array, connections object, settings. Return ONLY valid JSON, no markdown, no commentary.",
+              },
+              { role: "user", content: description },
+            ],
+            max_tokens: 8000,
+          }),
+        }
+      );
+      if (!res.ok) {
+        const txt = await res.text();
+        return `Błąd OpenRouter ${res.status}: ${txt}`;
+      }
+      const data = await res.json();
+      let content: string = data.choices?.[0]?.message?.content || "";
+      content = content.trim();
+      if (content.startsWith("```")) {
+        content = content.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+      }
+      let parsed: { nodes?: unknown[] } | null = null;
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        return "Błąd: model nie zwrócił poprawnego JSON.";
+      }
+      const nodeCount = Array.isArray(parsed?.nodes) ? parsed!.nodes!.length : 0;
+      await supabase
+        .from("projects")
+        .update({ ai_artifact: content })
+        .eq("id", projectId);
+      return `Wygenerowano workflow (${nodeCount} nodów)`;
+    }
+    case "add_admin_note": {
+      const note = String(args.note || "");
+      const { data: projectRow } = await supabase
+        .from("projects")
+        .select("admin_notes")
+        .eq("id", projectId)
+        .single();
+      const existing = Array.isArray(projectRow?.admin_notes)
+        ? (projectRow!.admin_notes as Array<{ content: string; created_at: string }>)
+        : [];
+      const updated = [
+        ...existing,
+        { content: note, created_at: new Date().toISOString() },
+      ];
+      await supabase
+        .from("projects")
+        .update({ admin_notes: updated })
+        .eq("id", projectId);
+      return "Notatka dodana";
+    }
     default:
       return `Nieznane narzędzie: ${toolName}`;
   }

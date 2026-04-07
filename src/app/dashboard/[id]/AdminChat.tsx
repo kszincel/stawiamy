@@ -114,11 +114,13 @@ export default function AdminChat({ projectId }: { projectId: string }) {
     }
   };
 
+  const isEmpty = !loading && messages.length === 0 && !sending;
+
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className={`flex flex-col ${isEmpty ? "" : "h-[600px]"}`}>
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto rounded-[0.5rem] border border-[#484847]/60 bg-[#0e0e0e] p-4 space-y-4"
+        className={`${isEmpty ? "" : "flex-1 overflow-y-auto"} rounded-[0.5rem] border border-[#484847]/60 bg-[#0e0e0e] p-4 space-y-4`}
       >
         {loading ? (
           <div className="text-sm text-[#adaaaa]">Ładowanie historii…</div>

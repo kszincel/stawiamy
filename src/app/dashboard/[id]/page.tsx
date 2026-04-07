@@ -132,6 +132,11 @@ export default async function ProjectDetailPage({
   const recommendedActions: string[] = Array.isArray(project.ai_recommended_actions)
     ? (project.ai_recommended_actions as string[]).filter((x): x is string => typeof x === "string")
     : [];
+  const adminNotes: Array<{ content: string; created_at: string }> = Array.isArray(
+    project.admin_notes
+  )
+    ? (project.admin_notes as Array<{ content: string; created_at: string }>)
+    : [];
   const completedActions: string[] = Array.isArray(project.completed_actions)
     ? (project.completed_actions as string[]).filter((x): x is string => typeof x === "string")
     : [];
@@ -411,6 +416,26 @@ export default async function ProjectDetailPage({
           <Section title="Chat z Claude">
             <AdminChat projectId={project.id} />
           </Section>
+
+          {adminNotes.length > 0 && (
+            <Section title="Notatki administratora">
+              <ul className="space-y-3">
+                {adminNotes.map((n, i) => (
+                  <li
+                    key={i}
+                    className="rounded-[0.5rem] border border-[#81ecff]/30 bg-[#0e0e0e] p-4"
+                  >
+                    <div className="text-xs text-[#81ecff] uppercase tracking-wider mb-2">
+                      {formatDate(n.created_at)}
+                    </div>
+                    <div className="text-sm text-white whitespace-pre-wrap">
+                      {n.content}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
 
           {(project.ai_brief || project.brief) && (
             <Section title="Brief AI (admin only)">
