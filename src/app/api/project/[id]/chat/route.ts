@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 
-export const maxDuration = 180;
+export const maxDuration = 60;
 
 const ADMIN_EMAIL = "konrad@ikonmedia.pl";
 
@@ -522,11 +522,11 @@ export async function POST(
     { role: "user", content: message },
   ];
 
-  // Tool-use loop (max 5 iterations to avoid runaway)
+  // Tool-use loop (max 3 iterations to fit Vercel function budget)
   const executedTools: string[] = [];
   let finalAssistantContent = "";
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 3; i++) {
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -540,7 +540,7 @@ export async function POST(
           messages: apiMessages,
           tools: TOOLS,
           tool_choice: "auto",
-          max_tokens: 4000,
+          max_tokens: 2500,
         }),
       }
     );
