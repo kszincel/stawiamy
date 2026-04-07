@@ -407,7 +407,7 @@ async function executeTool(
               },
               { role: "user", content: description },
             ],
-            max_tokens: 8000,
+            max_tokens: 16000,
           }),
         }
       );
@@ -418,21 +418,42 @@ async function executeTool(
       const data = await res.json();
       let content: string = data.choices?.[0]?.message?.content || "";
       content = content.trim();
+
+      // Strip markdown code fences
       if (content.startsWith("```")) {
-        content = content.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+        content = content.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
       }
+
+      // Try to extract first JSON object/array if there's surrounding text
       let parsed: { nodes?: unknown[] } | null = null;
+      let cleanedContent = content;
       try {
         parsed = JSON.parse(content);
       } catch {
-        return "Błąd: model nie zwrócił poprawnego JSON.";
+        // Find first { ... } block (greedy match for nested braces)
+        const match = content.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            parsed = JSON.parse(match[0]);
+            cleanedContent = match[0];
+          } catch {
+            // Save raw content anyway as fallback
+          }
+        }
       }
-      const nodeCount = Array.isArray(parsed?.nodes) ? parsed!.nodes!.length : 0;
+
+      // Save whatever we got - even raw text is useful for admin to inspect
       await supabase
         .from("projects")
-        .update({ ai_artifact: content })
+        .update({ ai_artifact: cleanedContent })
         .eq("id", projectId);
-      return `Wygenerowano workflow (${nodeCount} nodów)`;
+
+      if (parsed) {
+        const nodeCount = Array.isArray(parsed?.nodes) ? parsed.nodes.length : 0;
+        return `Wygenerowano workflow (${nodeCount} nodów)`;
+      } else {
+        return `Wygenerowano artefakt (${cleanedContent.length} znaków, parsing JSON nie powiódł się - zapisano raw content do inspekcji)`;
+      }
     }
     case "add_admin_note": {
       const note = String(args.note || "");
