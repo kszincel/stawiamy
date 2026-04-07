@@ -7,6 +7,35 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  metadata?: { tools?: string[] } | null;
+}
+
+const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
+  update_brief: { label: "Brief zaktualizowany", icon: "edit_note" },
+  update_artifact: { label: "Artefakt zaktualizowany", icon: "code" },
+  update_missing_info: { label: "Brakujące info zaktualizowane", icon: "help" },
+  update_recommended_actions: { label: "Zalecane akcje zaktualizowane", icon: "checklist" },
+  update_status: { label: "Status zmieniony", icon: "swap_horiz" },
+  send_client_email: { label: "Email do klienta wysłany", icon: "mail" },
+  notify_slack: { label: "Slack notification", icon: "notifications" },
+  generate_n8n_workflow: { label: "n8n workflow wygenerowany", icon: "auto_awesome" },
+  add_admin_note: { label: "Notatka admin dodana", icon: "sticky_note_2" },
+};
+
+function ToolBadge({ tool }: { tool: string }) {
+  // tool format: "name: result"
+  const [name, ...rest] = tool.split(":");
+  const result = rest.join(":").trim();
+  const meta = TOOL_LABELS[name.trim()] || { label: name.trim(), icon: "build" };
+  return (
+    <div className="inline-flex items-center gap-1.5 rounded-full bg-[#c3f400]/10 border border-[#c3f400]/30 px-3 py-1 text-xs text-[#c3f400] font-medium">
+      <span className="material-symbols-outlined text-sm">{meta.icon}</span>
+      <span>{meta.label}</span>
+      {result && result !== meta.label && (
+        <span className="text-[#c3f400]/60 text-[10px]">({result.substring(0, 40)})</span>
+      )}
+    </div>
+  );
 }
 
 function formatTime(d: string) {
@@ -148,6 +177,22 @@ export default function AdminChat({ projectId }: { projectId: string }) {
                     <div>{m.content}</div>
                   ) : (
                     <MarkdownRenderer content={m.content} />
+                  )}
+                  {!isUser && m.metadata?.tools && m.metadata.tools.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-[#484847]/50 flex flex-wrap gap-1.5">
+                      {m.metadata.tools.map((t, ti) => (
+                        <ToolBadge key={ti} tool={t} />
+                      ))}
+                    </div>
+                  )}
+                  {!isUser && m.metadata?.tools && m.metadata.tools.length > 0 && (
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs text-[#81ecff] hover:underline"
+                    >
+                      <span className="material-symbols-outlined text-sm">refresh</span>
+                      Odśwież stronę aby zobaczyć zmiany
+                    </button>
                   )}
                   <div
                     className={`text-[10px] mt-2 ${
