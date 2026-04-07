@@ -12,6 +12,7 @@ export default function ChatInput({
 }) {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -39,13 +40,14 @@ export default function ChatInput({
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return;
     setIsLoading(true);
+    setError(null);
 
-    // Save images to sessionStorage if present
-    if (images.length > 0) {
-      const base64Images = images.map((img) => img.preview);
+    // Save images to sessionStorage if present (preview page reads them)
+    const base64Images = images.map((img) => img.preview);
+    if (base64Images.length > 0) {
       sessionStorage.setItem("stawiamy_images", JSON.stringify(base64Images));
     }
 
@@ -53,17 +55,36 @@ export default function ChatInput({
     const urlMatch = prompt.match(URL_REGEX);
     const detectedUrl = urlMatch ? urlMatch[0] : null;
 
-    let redirectUrl = `/preview?prompt=${encodeURIComponent(prompt.trim())}`;
-    if (detectedUrl) {
-      redirectUrl += `&url=${encodeURIComponent(detectedUrl)}`;
-    }
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          images: base64Images.length > 0 ? base64Images : undefined,
+          url: detectedUrl || undefined,
+        }),
+      });
 
-    router.push(redirectUrl);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Błąd serwera (${res.status})`);
+      }
+
+      const data = (await res.json()) as { projectId: string };
+      if (!data.projectId) throw new Error("Brak identyfikatora projektu");
+
+      router.push(`/preview?id=${encodeURIComponent(data.projectId)}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd");
+      setIsLoading(false);
+    }
   };
 
   if (variant === "cta") {
     return (
-      <div className="flex w-full max-w-xl items-center gap-3">
+      <div className="flex w-full max-w-xl flex-col gap-2">
+      <div className="flex w-full items-center gap-3">
         <input
           type="text"
           value={prompt}
@@ -87,6 +108,10 @@ export default function ChatInput({
             "Zbuduj preview"
           )}
         </button>
+      </div>
+      {error && (
+        <p className="text-sm text-[#ff716c] px-2">{error}</p>
+      )}
       </div>
     );
   }
@@ -172,6 +197,9 @@ export default function ChatInput({
           </div>
         </div>
       </div>
+      {error && (
+        <p className="text-sm text-[#ff716c] mt-3 px-2">{error}</p>
+      )}
     </div>
   );
 }

@@ -1,28 +1,45 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import DetailsForm from "../components/DetailsForm";
 
-interface Classification {
-  product_type: "website" | "app" | "automation" | "agent" | "digital_product" | "redesign";
-  package: "digital_product" | "start" | "standard" | "custom" | "redesign" | "automation" | "agent";
-  preview_type: "design" | "brief";
+type ProductType =
+  | "website"
+  | "app"
+  | "automation"
+  | "agent"
+  | "digital_product"
+  | "redesign";
+
+type PackageKey =
+  | "digital_product"
+  | "start"
+  | "standard"
+  | "custom"
+  | "redesign"
+  | "automation"
+  | "agent";
+
+type PreviewType = "design" | "brief";
+
+interface Project {
+  id: string;
+  prompt: string;
+  product_type: ProductType;
+  package: PackageKey;
+  preview_type: PreviewType;
   estimated_price: number;
   deposit_amount: number;
   description: string;
   features: string[];
   timeline: string;
-}
-
-interface GenerateResult {
-  projectId: string;
-  classification: Classification;
-  previewUrl: string;
-  htmlUrl: string;
-  brief?: string;
-  sourceScreenshotUrl: string | null;
-  sourceUrl: string | null;
+  source_url: string | null;
+  source_images: string[] | null;
+  status: string;
+  preview_screenshot_url: string | null;
+  preview_html_url: string | null;
+  brief: string | null;
 }
 
 const LOADING_MESSAGES = [
@@ -98,32 +115,78 @@ function BriefRenderer({ brief }: { brief: string }) {
   );
 }
 
+const FINALIZED_STATUSES = new Set([
+  "details_submitted",
+  "in_progress",
+  "delivered",
+  "finalized",
+]);
+
 function PreviewContent() {
   const searchParams = useSearchParams();
-  const prompt = searchParams.get("prompt") || "";
-  const url = searchParams.get("url") || "";
+  const projectId = searchParams.get("id") || "";
 
-  const [status, setStatus] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
-  const [result, setResult] = useState<GenerateResult | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string>("");
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-  const [sourceImages, setSourceImages] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Read images from sessionStorage on mount
-  useEffect(() => {
+  const status: "loading" | "ready" | "error" = error
+    ? "error"
+    : project && project.status !== "preview_generating"
+    ? "ready"
+    : "loading";
+
+  const fetchProject = useCallback(async () => {
+    if (!projectId) return;
     try {
-      const stored = sessionStorage.getItem("stawiamy_images");
-      if (stored) {
-        setSourceImages(JSON.parse(stored));
-        sessionStorage.removeItem("stawiamy_images");
+      const res = await fetch(`/api/project/${projectId}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Projekt nie został znaleziony.");
+        }
+        throw new Error(`Błąd serwera (${res.status})`);
       }
-    } catch {
-      // ignore
+      const data = (await res.json()) as Project;
+      setProject(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd");
     }
-  }, []);
+  }, [projectId]);
+
+  // Initial load + missing id guard
+  useEffect(() => {
+    if (!projectId) {
+      setError("Brak identyfikatora projektu. Wróć na stronę główną i opisz swój pomysł.");
+      return;
+    }
+    fetchProject();
+  }, [projectId, fetchProject]);
+
+  // Polling while generating
+  useEffect(() => {
+    if (!project) return;
+    if (project.status !== "preview_generating") {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+    if (pollRef.current) return;
+    pollRef.current = setInterval(() => {
+      fetchProject();
+    }, 3000);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [project, fetchProject]);
 
   // Rotate loading messages
   useEffect(() => {
@@ -136,62 +199,16 @@ function PreviewContent() {
     return () => clearInterval(interval);
   }, [status]);
 
-  const generate = useCallback(async () => {
-    if (!prompt) {
-      setStatus("error");
-      setError("Brak opisu projektu. Wróć na stronę główną i opisz swój pomysł.");
-      return;
-    }
-
-    try {
-      // Read images from sessionStorage (may not be in state yet on first render)
-      let images: string[] = [];
-      try {
-        const stored = sessionStorage.getItem("stawiamy_images");
-        if (stored) {
-          images = JSON.parse(stored);
-          sessionStorage.removeItem("stawiamy_images");
-          setSourceImages(images);
-        }
-      } catch {
-        // ignore
-      }
-
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          images: images.length > 0 ? images : undefined,
-          url: url || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data.error || `Błąd serwera (${res.status})`
-        );
-      }
-
-      const data: GenerateResult = await res.json();
-      setResult(data);
-      setStatus("ready");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Wystąpił nieoczekiwany błąd"
-      );
-      setStatus("error");
-    }
-  }, [prompt, url]);
-
-  useEffect(() => {
-    generate();
-  }, [generate]);
-
-  const packageInfo = result
-    ? PACKAGE_CONFIG[result.classification.package] || PACKAGE_CONFIG.start
+  const packageInfo = project
+    ? PACKAGE_CONFIG[project.package] || PACKAGE_CONFIG.start
     : null;
+
+  const sourceImages = project?.source_images || [];
+  const sourceScreenshotUrl = project?.source_url
+    ? `https://api.microlink.io/?url=${encodeURIComponent(project.source_url)}&screenshot=true&meta=false&embed=screenshot.url`
+    : null;
+
+  const isFinalized = project ? FINALIZED_STATUSES.has(project.status) : false;
 
   return (
     <div className="min-h-screen bg-[#0e0e0e] text-white font-[var(--font-inter)]">
@@ -217,13 +234,13 @@ function PreviewContent() {
 
       <div className="mx-auto max-w-5xl px-6 py-12">
         {/* Prompt display */}
-        {prompt && (
+        {project?.prompt && (
           <div className="mb-10">
             <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-3 block">
               Twój brief
             </span>
             <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-6">
-              <p className="text-white leading-relaxed">{prompt}</p>
+              <p className="text-white leading-relaxed">{project.prompt}</p>
             </div>
           </div>
         )}
@@ -241,11 +258,10 @@ function PreviewContent() {
                 {LOADING_MESSAGES[loadingMessageIndex]}
               </h2>
               <p className="text-sm text-[#adaaaa]">
-                To może potrwać 1-2 minuty. Nie zamykaj tej strony.
+                To może potrwać 1-2 minuty. Możesz spokojnie odświeżyć stronę - postęp nie zniknie.
               </p>
             </div>
 
-            {/* Progress dots */}
             <div className="flex items-center gap-2 mt-4">
               {LOADING_MESSAGES.map((_, i) => (
                 <div
@@ -274,19 +290,9 @@ function PreviewContent() {
               <p className="text-sm text-[#adaaaa] max-w-md">{error}</p>
             </div>
             <div className="flex items-center gap-4 mt-4">
-              <button
-                onClick={() => {
-                  setStatus("loading");
-                  setLoadingMessageIndex(0);
-                  generate();
-                }}
-                className="rounded-full bg-[#1a1a1a] border border-[#484847] px-6 py-3 text-sm font-medium text-white hover:bg-[#262626] transition-colors cursor-pointer"
-              >
-                Spróbuj ponownie
-              </button>
               <a
                 href="/"
-                className="text-sm text-[#81ecff] hover:underline"
+                className="rounded-full bg-[#1a1a1a] border border-[#484847] px-6 py-3 text-sm font-medium text-white hover:bg-[#262626] transition-colors"
               >
                 Wróć na stronę główną
               </a>
@@ -295,26 +301,26 @@ function PreviewContent() {
         )}
 
         {/* Ready state */}
-        {status === "ready" && result && packageInfo && (
+        {status === "ready" && project && packageInfo && (
           <div className="space-y-8 animate-fade-in">
             {/* Source site screenshots (redesign mode) */}
-            {(result.sourceScreenshotUrl || sourceImages.length > 0) && (
+            {(sourceScreenshotUrl || sourceImages.length > 0) && (
               <div>
                 <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-3 block">
                   Obecna strona
                 </span>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {result.sourceScreenshotUrl && (
+                  {sourceScreenshotUrl && (
                     <div className="rounded-[0.5rem] border border-[#484847] overflow-hidden bg-[#131313]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={result.sourceScreenshotUrl}
+                        src={sourceScreenshotUrl}
                         alt="Obecna strona"
                         className="w-full"
                       />
-                      {result.sourceUrl && (
+                      {project.source_url && (
                         <div className="px-4 py-2 text-xs text-[#adaaaa] truncate">
-                          {result.sourceUrl}
+                          {project.source_url}
                         </div>
                       )}
                     </div>
@@ -333,15 +339,14 @@ function PreviewContent() {
               </div>
             )}
 
-            {/* New design label for redesign */}
-            {result.classification.preview_type === "design" && (result.sourceScreenshotUrl || sourceImages.length > 0) && (
+            {project.preview_type === "design" && (sourceScreenshotUrl || sourceImages.length > 0) && (
               <span className="text-xs font-medium text-[#81ecff] uppercase tracking-wider block">
                 Nowy design
               </span>
             )}
 
             {/* Brief (automation/agent) */}
-            {result.classification.preview_type === "brief" && result.brief ? (
+            {project.preview_type === "brief" && project.brief ? (
               <div>
                 <p className="text-sm text-[#adaaaa] mb-3">
                   Tak będzie wyglądać Twoja automatyzacja:
@@ -353,31 +358,35 @@ function PreviewContent() {
                       Brief techniczny
                     </span>
                   </div>
-                  <BriefRenderer brief={result.brief} />
+                  <BriefRenderer brief={project.brief} />
+                </div>
+              </div>
+            ) : project.preview_type === "design" && project.preview_screenshot_url ? (
+              <div className="mx-auto max-w-3xl rounded-[0.75rem] border border-[#484847] overflow-hidden bg-[#131313]">
+                {/* Browser bar */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-[#1a1a1a] border-b border-[#484847]/50">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-3 w-3 rounded-full bg-[#ff716c]/60" />
+                    <div className="h-3 w-3 rounded-full bg-[#c3f400]/60" />
+                    <div className="h-3 w-3 rounded-full bg-[#81ecff]/60" />
+                  </div>
+                  <div className="flex-1 mx-4">
+                    <div className="h-6 rounded-full bg-[#0e0e0e] border border-[#484847]/50 max-w-sm mx-auto" />
+                  </div>
+                </div>
+                <div className="max-h-[70vh] overflow-y-auto bg-[#0e0e0e] flex justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={project.preview_screenshot_url}
+                    alt="Podgląd projektu"
+                    className="max-w-full h-auto"
+                  />
                 </div>
               </div>
             ) : (
-            <div className="mx-auto max-w-3xl rounded-[0.75rem] border border-[#484847] overflow-hidden bg-[#131313]">
-              {/* Browser bar */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-[#1a1a1a] border-b border-[#484847]/50">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-[#ff716c]/60" />
-                  <div className="h-3 w-3 rounded-full bg-[#c3f400]/60" />
-                  <div className="h-3 w-3 rounded-full bg-[#81ecff]/60" />
-                </div>
-                <div className="flex-1 mx-4">
-                  <div className="h-6 rounded-full bg-[#0e0e0e] border border-[#484847]/50 max-w-sm mx-auto" />
-                </div>
+              <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-6 text-sm text-[#adaaaa]">
+                Nie udało się wygenerować wizualnego podglądu, ale możesz przejść dalej i wypełnić formularz.
               </div>
-              <div className="max-h-[70vh] overflow-y-auto bg-[#0e0e0e] flex justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={result.previewUrl}
-                  alt="Podgląd projektu"
-                  className="max-w-full h-auto"
-                />
-              </div>
-            </div>
             )}
 
             {/* Cards grid */}
@@ -396,24 +405,21 @@ function PreviewContent() {
                       {packageInfo.label}
                     </h3>
                     <span className="text-xs text-[#adaaaa]">
-                      {result.classification.timeline}
+                      {project.timeline}
                     </span>
                   </div>
                 </div>
 
                 <p className="text-sm text-[#adaaaa] leading-relaxed mb-6">
-                  {result.classification.description}
+                  {project.description}
                 </p>
 
                 <div className="space-y-3">
                   <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider">
                     Co zawiera
                   </span>
-                  {result.classification.features.map((feature) => (
-                    <div
-                      key={feature}
-                      className="flex items-start gap-2"
-                    >
+                  {project.features.map((feature) => (
+                    <div key={feature} className="flex items-start gap-2">
                       <span className="text-[#81ecff] mt-0.5 shrink-0 text-sm">
                         &#x2713;
                       </span>
@@ -431,9 +437,7 @@ function PreviewContent() {
                   </h3>
                   <div className="mb-6">
                     <span className="text-4xl font-extrabold text-white font-[var(--font-plus-jakarta)]">
-                      {result.classification.estimated_price.toLocaleString(
-                        "pl-PL"
-                      )}
+                      {project.estimated_price.toLocaleString("pl-PL")}
                     </span>
                     <span className="text-lg text-[#adaaaa] ml-2">PLN</span>
                   </div>
@@ -444,10 +448,7 @@ function PreviewContent() {
                         Zaliczka (30%)
                       </span>
                       <span className="text-lg font-bold text-[#c3f400]">
-                        {result.classification.deposit_amount.toLocaleString(
-                          "pl-PL"
-                        )}{" "}
-                        PLN
+                        {project.deposit_amount.toLocaleString("pl-PL")} PLN
                       </span>
                     </div>
                   </div>
@@ -477,7 +478,7 @@ function PreviewContent() {
 
             {/* Details form / success */}
             <div className="pt-4 border-t border-[#484847]/30">
-              {submitted ? (
+              {submitted || isFinalized ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-6 text-center animate-fade-in">
                   <div className="h-16 w-16 rounded-full bg-[#81ecff]/10 border border-[#81ecff] flex items-center justify-center">
                     <span className="material-symbols-outlined text-3xl text-[#81ecff]">check</span>
@@ -488,7 +489,7 @@ function PreviewContent() {
                       Otrzymaliśmy Twoje zgłoszenie. Doprecyzowany brief, plan działania i wycenę przyślemy na maila w ciągu kilku minut.
                     </p>
                     <p className="text-[#adaaaa] leading-relaxed">
-                      Wysłaliśmy też magic link na Twojego maila — kliknij go, żeby śledzić postęp w panelu klienta.
+                      Wysłaliśmy też magic link na Twojego maila - kliknij go, żeby śledzić postęp w panelu klienta.
                     </p>
                   </div>
                   <a
@@ -501,8 +502,8 @@ function PreviewContent() {
               ) : (
                 <div className="pt-8">
                   <DetailsForm
-                    projectId={result.projectId}
-                    productType={result.classification.product_type}
+                    projectId={project.id}
+                    productType={project.product_type}
                     onSuccess={() => setSubmitted(true)}
                   />
                 </div>
@@ -510,10 +511,10 @@ function PreviewContent() {
             </div>
 
             {/* HTML preview link */}
-            {result.classification.preview_type === "design" && result.htmlUrl && (
+            {project.preview_type === "design" && project.preview_html_url && (
               <div className="text-center">
                 <a
-                  href={result.htmlUrl}
+                  href={project.preview_html_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-sm text-[#81ecff] hover:underline"

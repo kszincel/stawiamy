@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { stitch } from "@google/stitch-sdk";
+import { after } from "next/server";
 
 export const maxDuration = 300;
 
@@ -104,7 +105,6 @@ Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
 }${context}`;
 
   const content = await callOpenRouter(systemPrompt, prompt, 800);
-  // Strip potential markdown fences
   const cleaned = content.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
   return JSON.parse(cleaned) as Classification;
 }
@@ -204,18 +204,6 @@ Napisz brief techniczny.`;
   return callOpenRouter(systemPrompt, userPrompt, 1200);
 }
 
-async function fetchScreenshotFromUrl(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(
-      `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url`
-    );
-    if (!response.ok) return null;
-    return response.url;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -229,7 +217,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Prompt jest wymagany" }, { status: 400 });
     }
 
-    // Step 1: Classify
+    // Step 1: Classify (fast - ~3s)
     const classification = await classifyPrompt(
       prompt,
       Boolean(images?.length),
@@ -267,70 +255,59 @@ export async function POST(request: Request) {
       );
     }
 
-    let previewUrl: string | null = null;
-    let htmlUrl: string | null = null;
-    let brief: string | null = null;
-    let sourceScreenshotUrl: string | null = null;
-
-    // Fetch existing site screenshot if URL provided
-    if (url) {
-      sourceScreenshotUrl = await fetchScreenshotFromUrl(url);
-    }
-
-    // Step 3: Generate preview based on type
-    if (classification.preview_type === "brief") {
-      // Generate text brief for automation/agent
-      brief = await generateBrief(prompt, classification);
-    } else {
-      // Generate visual design with Stitch
+    // Step 3: Heavy work in background via after()
+    after(async () => {
       try {
-        const enhancedPrompt = await enhancePromptForStitch(
-          prompt,
-          classification,
-          url
-        );
+        const updates: Record<string, unknown> = {};
 
-        const shortPrompt =
-          prompt.length > 60 ? prompt.substring(0, 60) + "..." : prompt;
-        const stitchProject = await stitch.createProject(`Client: ${shortPrompt}`);
-        const screen = await stitchProject.generate(enhancedPrompt, "DESKTOP");
-        previewUrl = await screen.getImage();
-        htmlUrl = await screen.getHtml();
+        if (classification.preview_type === "brief") {
+          const brief = await generateBrief(prompt, classification);
+          updates.brief = brief;
+        } else {
+          try {
+            const enhancedPrompt = await enhancePromptForStitch(
+              prompt,
+              classification,
+              url
+            );
+
+            const shortPrompt =
+              prompt.length > 60 ? prompt.substring(0, 60) + "..." : prompt;
+            const stitchProject = await stitch.createProject(
+              `Client: ${shortPrompt}`
+            );
+            const screen = await stitchProject.generate(
+              enhancedPrompt,
+              "DESKTOP"
+            );
+            const previewUrl = await screen.getImage();
+            const htmlUrl = await screen.getHtml();
+
+            updates.stitch_project_id = stitchProject.id;
+            updates.stitch_screen_id = screen.id;
+            updates.preview_screenshot_url = previewUrl;
+            updates.preview_html_url = htmlUrl;
+          } catch (stitchError) {
+            console.error("Stitch error:", stitchError);
+          }
+        }
+
+        updates.status = "preview_ready";
 
         await supabase
           .from("projects")
-          .update({
-            stitch_project_id: stitchProject.id,
-            stitch_screen_id: screen.id,
-            preview_screenshot_url: previewUrl,
-            preview_html_url: htmlUrl,
-          })
+          .update(updates)
           .eq("id", project.id);
-      } catch (stitchError) {
-        console.error("Stitch error:", stitchError);
-        // Don't fail - continue without preview
+      } catch (bgError) {
+        console.error("Background generation error:", bgError);
+        await supabase
+          .from("projects")
+          .update({ status: "preview_ready" })
+          .eq("id", project.id);
       }
-    }
-
-    // Step 4: Update with brief if generated
-    if (brief) {
-      await supabase.from("projects").update({ brief }).eq("id", project.id);
-    }
-
-    await supabase
-      .from("projects")
-      .update({ status: "preview_ready" })
-      .eq("id", project.id);
-
-    return Response.json({
-      projectId: project.id,
-      classification,
-      previewUrl,
-      htmlUrl,
-      brief,
-      sourceScreenshotUrl,
-      sourceUrl: url || null,
     });
+
+    return Response.json({ projectId: project.id });
   } catch (error) {
     console.error("Generate error:", error);
     return Response.json(
