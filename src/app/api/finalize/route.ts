@@ -73,6 +73,21 @@ export async function POST(request: Request) {
       });
     }
 
+    // Send magic link so user can track progress in dashboard (best-effort)
+    try {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "https://stawiamy.vercel.app";
+      await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard/${project.id}`,
+          shouldCreateUser: true,
+        },
+      });
+    } catch (e) {
+      console.error("Magic link error:", e);
+    }
+
     return Response.json({
       success: true,
       projectId: project.id,

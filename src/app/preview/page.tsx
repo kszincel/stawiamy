@@ -482,10 +482,19 @@ function PreviewContent() {
                   </div>
                   <div className="max-w-lg">
                     <h2 className="text-2xl font-bold text-white mb-3">Świetnie!</h2>
-                    <p className="text-[#adaaaa] leading-relaxed">
+                    <p className="text-[#adaaaa] leading-relaxed mb-2">
                       Otrzymaliśmy Twoje zgłoszenie. Doprecyzowany brief, plan działania i wycenę przyślemy na maila w ciągu kilku minut.
                     </p>
+                    <p className="text-[#adaaaa] leading-relaxed">
+                      Wysłaliśmy też magic link na Twojego maila — kliknij go, żeby śledzić postęp w panelu klienta.
+                    </p>
                   </div>
+                  <a
+                    href="/dashboard"
+                    className="rounded-full bg-[#c3f400] text-[#0e0e0e] font-bold px-6 py-3 text-sm hover:opacity-90 transition-opacity"
+                  >
+                    Idź do panelu
+                  </a>
                 </div>
               ) : (
                 <div className="pt-8">
