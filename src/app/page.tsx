@@ -436,7 +436,7 @@ function Testimonials() {
       quote:
         "Prosiłem o kalkulator marży dla kawiarni. Dostałem działający produkt w jeden wieczór. Stawiamy.ai to game changer dla małych firm.",
       name: "Marek K.",
-      title: "Founder, kawkalogia.pl",
+      title: "Founder, kawiarnia",
       initials: "MK",
       color: "#81ecff",
       textColor: "#005762",
@@ -445,7 +445,7 @@ function Testimonials() {
       quote:
         "Zamiast 3 tygodni pracy z agencją, dostałam landing page w 48h. I to taki, że konkurencja pyta kto nam to zrobił.",
       name: "Anna W.",
-      title: "Marketing Manager, TechFlow",
+      title: "Marketing Manager",
       initials: "AW",
       color: "#c3f400",
       textColor: "#455900",
@@ -454,7 +454,7 @@ function Testimonials() {
       quote:
         "Automatyzacja outreachu LinkedIn której potrzebowałem od miesięcy. Postawiona w 2 dni, działa perfekcyjnie. Polecam każdemu.",
       name: "Piotr D.",
-      title: "CEO, AutoPilot.pl",
+      title: "CEO startupu",
       initials: "PD",
       color: "#70aaff",
       textColor: "#0a2455",
