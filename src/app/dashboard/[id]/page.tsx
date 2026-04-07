@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { StatusBadge } from "../status";
 import StatusUpdater from "./StatusUpdater";
 import EditDetails from "./EditDetails";
+import PaymentSection from "./PaymentSection";
+import PaymentToast from "./PaymentToast";
 
 export const dynamic = "force-dynamic";
 
@@ -97,8 +99,13 @@ export default async function ProjectDetailPage({
   const sourceImages: string[] = Array.isArray(project.source_images) ? project.source_images : [];
   const missingInfo: string[] = Array.isArray(project.ai_missing_info) ? project.ai_missing_info : [];
 
+  const isOwner = !!user?.email && project.contact_email === user.email;
+  const paidStatuses = ["deposit_paid", "in_progress", "delivered", "completed"];
+  const isPaid = paidStatuses.includes(project.status || "");
+
   return (
     <div className="space-y-6">
+      <PaymentToast />
       <div>
         <Link
           href="/dashboard"
@@ -151,6 +158,21 @@ export default async function ProjectDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Payment section for owner when finalized */}
+      {isOwner && !isAdmin && project.status === "finalized" && project.deposit_amount && (
+        <PaymentSection
+          projectId={project.id}
+          depositAmount={project.deposit_amount}
+        />
+      )}
+
+      {/* Paid badge */}
+      {isOwner && !isAdmin && isPaid && (
+        <div className="rounded-[0.75rem] border border-[#c3f400] bg-[#c3f400]/10 p-4 text-sm text-[#c3f400] font-bold">
+          ✓ Zapłacono
+        </div>
+      )}
 
       {/* Admin status updater */}
       {isAdmin && (
