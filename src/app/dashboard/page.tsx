@@ -31,7 +31,28 @@ function formatPrice(n: number | null) {
   return `${n.toLocaleString("pl-PL")} PLN`;
 }
 
-export default async function DashboardPage() {
+type FilterKey = "all" | "paid" | "unpaid" | "cancelled";
+
+const FILTER_STATUSES: Record<FilterKey, string[] | null> = {
+  all: null,
+  paid: ["deposit_paid", "in_progress", "delivered"],
+  unpaid: ["preview_generating", "preview_ready", "finalized"],
+  cancelled: ["cancelled"],
+};
+
+const FILTER_LABELS: Record<FilterKey, string> = {
+  all: "Wszystkie",
+  paid: "Opłacone",
+  unpaid: "Nieopłacone",
+  cancelled: "Anulowane",
+};
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const { filter: filterParam } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -54,11 +75,28 @@ export default async function DashboardPage() {
 
   const { data: projects, error } = await query;
 
-  const list: Project[] = (projects ?? []) as Project[];
+  const allList: Project[] = (projects ?? []) as Project[];
 
-  // Stats for admin
-  const totalRevenue = list.reduce((sum, p) => sum + (p.estimated_price || 0), 0);
-  const statusCounts = list.reduce<Record<string, number>>((acc, p) => {
+  // Admin filter (paid / unpaid / cancelled / all). Non-admin always "all".
+  const activeFilter: FilterKey = isAdmin && filterParam && filterParam in FILTER_STATUSES
+    ? (filterParam as FilterKey)
+    : "all";
+  const filterStatuses = FILTER_STATUSES[activeFilter];
+  const list: Project[] = filterStatuses
+    ? allList.filter((p) => p.status && filterStatuses.includes(p.status))
+    : allList;
+
+  // Counts per filter (computed from full list, for tab badges)
+  const filterCounts: Record<FilterKey, number> = {
+    all: allList.length,
+    paid: allList.filter((p) => p.status && FILTER_STATUSES.paid!.includes(p.status)).length,
+    unpaid: allList.filter((p) => p.status && FILTER_STATUSES.unpaid!.includes(p.status)).length,
+    cancelled: allList.filter((p) => p.status && FILTER_STATUSES.cancelled!.includes(p.status)).length,
+  };
+
+  // Stats for admin (always computed from full list, ignoring active filter)
+  const totalRevenue = allList.reduce((sum, p) => sum + (p.estimated_price || 0), 0);
+  const statusCounts = allList.reduce<Record<string, number>>((acc, p) => {
     const s = p.status || "unknown";
     acc[s] = (acc[s] || 0) + 1;
     return acc;
@@ -112,7 +150,7 @@ export default async function DashboardPage() {
           </div>
           <div className="rounded-[0.5rem] border border-[#484847] bg-[#131313] p-5">
             <div className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-2">
-              Sfinalizowanych
+              Aktywnych
             </div>
             <div className="text-2xl font-bold text-[#81ecff]">
               {(statusCounts.finalized || 0) +
@@ -132,16 +170,52 @@ export default async function DashboardPage() {
         </div>
       )}
 
+      {isAdmin && allList.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-b border-[#484847]/50 pb-4">
+          {(Object.keys(FILTER_LABELS) as FilterKey[]).map((key) => {
+            const active = key === activeFilter;
+            return (
+              <Link
+                key={key}
+                href={key === "all" ? "/dashboard" : `/dashboard?filter=${key}`}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium border transition-colors ${
+                  active
+                    ? "bg-[#81ecff] border-[#81ecff] text-[#005762]"
+                    : "bg-[#1a1a1a] border-[#484847] text-[#adaaaa] hover:border-[#81ecff]/50 hover:text-white"
+                }`}
+              >
+                {FILTER_LABELS[key]}
+                <span
+                  className={`text-xs rounded-full px-2 py-0.5 ${
+                    active ? "bg-[#005762]/20 text-[#005762]" : "bg-[#484847]/50 text-[#adaaaa]"
+                  }`}
+                >
+                  {filterCounts[key]}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       {list.length === 0 ? (
+        allList.length > 0 && isAdmin ? (
+          <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-8 text-center">
+            <p className="text-sm text-[#adaaaa]">
+              Brak projektów w kategorii &quot;{FILTER_LABELS[activeFilter]}&quot;.
+            </p>
+          </div>
+        ) : (
         <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-8 md:p-12 flex flex-col items-center text-center">
           <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter text-white mb-3 font-[var(--font-plus-jakarta)]">
             Stwórz swój pierwszy projekt
           </h2>
           <p className="text-sm text-[#adaaaa] mb-8 max-w-xl">
-            Opisz czego potrzebujesz - dostaniesz preview lub brief w kilka minut.
+            Opisz czego potrzebujesz - dostaniesz podgląd w kilka minut.
           </p>
           <ChatInput variant="hero" />
         </div>
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {list.map((p) => (

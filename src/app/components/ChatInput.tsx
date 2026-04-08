@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const URL_REGEX = /https?:\/\/[^\s,;)}\]]+/gi;
-const ACCEPT = "image/*,application/pdf,.doc,.docx,.txt,.md";
-const MAX_ATTACHMENTS = 5;
+const ACCEPT = "image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.odt,.ods,.txt,.md,.json,.zip";
+const MAX_ATTACHMENTS = 15;
 
 export interface Attachment {
   url: string;
@@ -51,48 +51,54 @@ export default function ChatInput({
     if (fileInputRef.current) fileInputRef.current.value = "";
     const remaining = MAX_ATTACHMENTS - attachments.length;
     const toUpload = files.slice(0, remaining);
+    if (toUpload.length === 0) return;
 
-    for (const file of toUpload) {
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setAttachments((prev) => [
-        ...prev,
-        {
-          id,
-          filename: file.name,
-          size: file.size,
-          type: file.type,
-          uploading: true,
-        },
-      ]);
+    // Add ALL chips at once so user sees the full batch immediately
+    const items = toUpload.map((file) => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      file,
+    }));
 
-      try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Upload failed");
-        setAttachments((prev) =>
-          prev.map((a) =>
-            a.id === id
-              ? { ...a, uploading: false, url: data.url }
-              : a
-          )
-        );
-      } catch (err) {
-        setAttachments((prev) =>
-          prev.map((a) =>
-            a.id === id
-              ? {
-                  ...a,
-                  uploading: false,
-                  error:
-                    err instanceof Error ? err.message : "Błąd uploadu",
-                }
-              : a
-          )
-        );
-      }
-    }
+    setAttachments((prev) => [
+      ...prev,
+      ...items.map(({ id, file }) => ({
+        id,
+        filename: file.name,
+        size: file.size,
+        type: file.type,
+        uploading: true,
+      })),
+    ]);
+
+    // Upload all in parallel
+    await Promise.all(
+      items.map(async ({ id, file }) => {
+        try {
+          const fd = new FormData();
+          fd.append("file", file);
+          const res = await fetch("/api/upload", { method: "POST", body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Upload failed");
+          setAttachments((prev) =>
+            prev.map((a) =>
+              a.id === id ? { ...a, uploading: false, url: data.url } : a
+            )
+          );
+        } catch (err) {
+          setAttachments((prev) =>
+            prev.map((a) =>
+              a.id === id
+                ? {
+                    ...a,
+                    uploading: false,
+                    error: err instanceof Error ? err.message : "Błąd uploadu",
+                  }
+                : a
+            )
+          );
+        }
+      })
+    );
   };
 
   const removeAttachment = (id: string) => {
@@ -167,7 +173,7 @@ export default function ChatInput({
                 <span>Generuję...</span>
               </>
             ) : (
-              "Zbuduj preview"
+              "Pokaż podgląd"
             )}
           </button>
         </div>
@@ -242,14 +248,28 @@ export default function ChatInput({
         )}
 
         <div className="flex items-center justify-between pt-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading || attachments.length >= MAX_ATTACHMENTS}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#484847] text-[#adaaaa] hover:border-[#767575] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Dodaj załącznik"
-          >
-            <span className="material-symbols-outlined text-xl">add</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || attachments.length >= MAX_ATTACHMENTS}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-[#484847] text-[#adaaaa] hover:border-[#767575] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Dodaj załącznik"
+              title="Dodaj pliki (PDF, obrazy, Word, Excel, CSV)"
+            >
+              <span className="material-symbols-outlined text-xl">add</span>
+            </button>
+            {attachments.length > 0 ? (
+              <span className="text-xs text-[#adaaaa]">
+                {attachments.filter((a) => a.uploading).length > 0
+                  ? `Wgrywam ${attachments.filter((a) => a.uploading).length} z ${attachments.length}...`
+                  : `${attachments.length}/${MAX_ATTACHMENTS} plików`}
+              </span>
+            ) : (
+              <span className="text-xs text-[#6a6a6a] hidden sm:inline">
+                PDF, obrazy, Word, Excel, CSV
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleSubmit}

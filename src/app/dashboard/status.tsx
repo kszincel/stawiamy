@@ -10,7 +10,7 @@ export type ProjectStatus =
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   preview_generating: "Generowanie podglądu",
   preview_ready: "Podgląd gotowy",
-  finalized: "Sfinalizowany",
+  finalized: "Oczekuje na zaliczkę",
   deposit_paid: "Zaliczka opłacona",
   in_progress: "W realizacji",
   delivered: "Dostarczony",

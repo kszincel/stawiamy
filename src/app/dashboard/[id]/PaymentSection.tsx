@@ -160,7 +160,7 @@ export default function PaymentSection({ projectId, depositAmount }: Props) {
         {paying
           ? "Przetwarzanie..."
           : finalAmount === 0
-            ? "Aktywuj projekt"
+            ? "Zamawiam realizację"
             : `Zapłać ${formatPrice(finalAmount)}`}
       </button>
 

@@ -134,7 +134,7 @@ Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
   "deposit_amount": number,
   "description": "1-2 zdania po polsku",
   "features": ["3-5 kluczowych elementów po polsku"],
-  "timeline": "szacowany czas po polsku"
+  "timeline": "szacowany czas po polsku (dla automation/agent ZAWSZE '24-72h', dla digital_product '24-72h', dla website 'do 7 dni', dla app/custom '7-14 dni', dla redesign '3-7 dni')"
 }${context}`;
 
   const content = await callOpenRouter(systemPrompt, prompt, 800);
@@ -203,31 +203,26 @@ async function generateBrief(
 ): Promise<string> {
   const systemPrompt = `Jesteś senior automation engineer / AI engineer. Klient opisał potrzebę automatyzacji lub agenta AI.
 
-Twoim zadaniem jest napisanie zwięzłego, ale konkretnego briefu technicznego po polsku, który:
-1. Definiuje cel i problem do rozwiązania (1-2 zdania)
-2. Opisuje proponowane rozwiązanie (architektura, używane narzędzia/API, kluczowe komponenty)
-3. Wymienia konkretne kroki workflow (numbered list, max 6 punktów)
-4. Wskazuje potrzebne integracje (n8n, OpenAI, Claude, Slack, Notion, etc.)
-5. Wskazuje co klient musi dostarczyć (klucze API, dostępy, szablony)
-6. Określa estymowany czas wdrożenia
+Pisz PROSTYM językiem - klient niekoniecznie zna się na IT. Unikaj angielskich określeń, korpo-żargonu i nazw technologii (n8n, OpenAI, API, webhook, workflow itp.). Skup się na tym CO robi rozwiązanie, nie JAK technicznie.
+
+Twoim zadaniem jest napisanie krótkiego, klarownego briefu po polsku, który:
+1. Definiuje cel i co rozwiązanie zrobi dla klienta (1-2 zdania)
+2. Opisuje jak to będzie działać krok po kroku (max 5 punktów, prostym językiem)
+3. Wskazuje co klient musi dostarczyć (dostępy, materiały, przykłady)
 
 Format markdown:
 **Cel:** ...
 
-**Rozwiązanie:**
-[opis architektury w 2-3 zdaniach]
-
-**Workflow:**
+**Jak to będzie działać:**
 1. ...
 2. ...
 
-**Integracje:** [lista]
-
 **Co potrzebujemy od Ciebie:** [lista]
 
-**Czas wdrożenia:** ...
+**Czas wdrożenia:** 24-72h
 
-Pisz konkretnie, technicznie, bez marketingowego bełkotu. Klient ma poczuć że wiesz co robisz. Maks 350 słów.`;
+NIE pisz o: integracjach, modelach AI, używanych narzędziach, architekturze. Klient tego nie potrzebuje wiedzieć.
+Maks 200 słów. Bez marketingowego bełkotu. Konkret.`;
 
   const userPrompt = `Klient prosi o: ${prompt}
 

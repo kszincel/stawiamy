@@ -26,6 +26,12 @@ CRITICAL RULES FOR TOOL USE:
 - After tools execute, briefly summarize what was changed (1-3 sentences max).
 - If you have nothing to actually change, just answer the question without claiming you did anything.
 
+CRITICAL RULES FOR ATTACHMENTS:
+- The project may include attachments (PDFs, images, Word docs, spreadsheets) — their content is NOT always inlined below. Filename and type are listed, but binary file contents (PDF/image/Word/Excel) you cannot read directly.
+- BEFORE marking ANY information as missing via update_missing_info: re-read the attachments list. If a topic could plausibly be covered in any attached file, DO NOT mark it as missing — instead, ask Konrad to verify, or assume it is present.
+- Example: if a "doctorate.pdf" is attached and you're tempted to mark "structure of chapters" as missing — DON'T. The structure is almost certainly inside that PDF.
+- Only mark info as missing when you are confident no attachment could contain it.
+
 Be concise, technical, actionable. Output in Polish unless Konrad writes in English.
 Use markdown for formatting in your text responses.`;
 
@@ -52,7 +58,68 @@ interface ProjectRow {
   status: string | null;
 }
 
-function buildSystemPrompt(project: ProjectRow): string {
+interface AttachmentMeta {
+  url: string;
+  filename: string;
+  size: number;
+  type: string;
+}
+
+const TEXT_MIME_PREFIXES = ["text/"];
+const TEXT_MIME_EXACT = new Set([
+  "application/json",
+  "application/xml",
+  "application/csv",
+]);
+const TEXT_EXTENSIONS = new Set(["txt", "md", "csv", "json", "xml", "html", "yaml", "yml"]);
+const MAX_INLINE_CHARS_PER_FILE = 8000;
+
+function isTextAttachment(a: AttachmentMeta): boolean {
+  if (TEXT_MIME_PREFIXES.some((p) => a.type?.startsWith(p))) return true;
+  if (TEXT_MIME_EXACT.has(a.type)) return true;
+  const ext = a.filename.split(".").pop()?.toLowerCase() || "";
+  return TEXT_EXTENSIONS.has(ext);
+}
+
+async function fetchTextContent(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (text.length > MAX_INLINE_CHARS_PER_FILE) {
+      return text.slice(0, MAX_INLINE_CHARS_PER_FILE) + `\n\n[...obcięto, łącznie ${text.length} znaków]`;
+    }
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+async function buildAttachmentsContext(raw: unknown): Promise<{
+  metadata: AttachmentMeta[];
+  inlinedContents: Array<{ filename: string; content: string }>;
+}> {
+  if (!Array.isArray(raw)) return { metadata: [], inlinedContents: [] };
+  const list = raw as AttachmentMeta[];
+  const inlined: Array<{ filename: string; content: string }> = [];
+
+  await Promise.all(
+    list.map(async (a) => {
+      if (!a?.url || !a?.filename) return;
+      if (!isTextAttachment(a)) return;
+      const content = await fetchTextContent(a.url);
+      if (content != null) {
+        inlined.push({ filename: a.filename, content });
+      }
+    })
+  );
+
+  return { metadata: list, inlinedContents: inlined };
+}
+
+async function buildSystemPrompt(project: ProjectRow): Promise<string> {
+  const { metadata, inlinedContents } = await buildAttachmentsContext(project.attachments);
+
   const ctx = {
     id: project.id,
     status: project.status,
@@ -67,13 +134,30 @@ function buildSystemPrompt(project: ProjectRow): string {
     original_prompt: project.prompt,
     source_url: project.source_url,
     form_details: project.details,
-    attachments: project.attachments,
+    attachments: metadata,
     ai_brief: project.ai_brief || project.brief,
     ai_artifact: project.ai_artifact,
     missing_info: project.ai_missing_info,
     recommended_actions: project.ai_recommended_actions,
   };
-  return `${BASE_SYSTEM_PROMPT}\n\nCurrent project state:\n${JSON.stringify(ctx, null, 2)}`;
+
+  let attachmentsBlock = "";
+  if (metadata.length > 0) {
+    const binaryAttachments = metadata.filter((a) => !isTextAttachment(a));
+    if (binaryAttachments.length > 0) {
+      attachmentsBlock += `\n\nUWAGA: następujące załączniki są w formacie binarnym (PDF/obraz/Word/Excel) — nie widzisz ich treści, ale zakładaj że klient zawarł w nich kluczowe informacje. NIE oznaczaj jako brakujące rzeczy, które mogą być w tych plikach:\n${binaryAttachments
+        .map((a) => `- ${a.filename} (${a.type})`)
+        .join("\n")}`;
+    }
+    if (inlinedContents.length > 0) {
+      attachmentsBlock += `\n\nTreść załączników tekstowych (rzeczywista zawartość plików):\n`;
+      for (const f of inlinedContents) {
+        attachmentsBlock += `\n--- ${f.filename} ---\n${f.content}\n--- koniec ${f.filename} ---\n`;
+      }
+    }
+  }
+
+  return `${BASE_SYSTEM_PROMPT}\n\nCurrent project state:\n${JSON.stringify(ctx, null, 2)}${attachmentsBlock}`;
 }
 
 const TOOLS = [
@@ -575,7 +659,7 @@ export async function POST(
 
   // Build conversation
   const apiMessages: ChatMessage[] = [
-    { role: "system", content: buildSystemPrompt(project) },
+    { role: "system", content: await buildSystemPrompt(project) },
     ...((history || []).map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content as string,
@@ -694,7 +778,7 @@ async function runToolLoop(
     }
 
     const refreshed = await fetchProject();
-    apiMessages[0] = { role: "system", content: buildSystemPrompt(refreshed) };
+    apiMessages[0] = { role: "system", content: await buildSystemPrompt(refreshed) };
   }
 
   if (!finalAssistantContent && executedTools.length === 0) {

@@ -109,13 +109,13 @@ function HowItWorks() {
     {
       num: "01",
       title: "Opisz czego potrzebujesz",
-      desc: "Wpisz swój pomysł w chat lub wyślij brief. Im więcej szczegółów, tym lepszy efekt.",
+      desc: "Wpisz swój pomysł i dodaj pliki, jeśli masz. Im więcej szczegółów, tym lepszy efekt.",
       icon: "chat",
     },
     {
       num: "02",
-      title: "Preview lub brief w kilka minut",
-      desc: "Generujemy wizualizację (dla stron i aplikacji) lub brief techniczny (dla automatyzacji i agentów).",
+      title: "Podgląd w kilka minut",
+      desc: "Generujemy wizualizację (dla stron i aplikacji) lub plan działania (dla automatyzacji i agentów).",
       icon: "auto_awesome",
       filled: true,
       iconColor: "text-[#c3f400]",
@@ -206,7 +206,7 @@ function Services() {
                 Automatyzacje
               </h3>
               <p className="text-sm text-[#adaaaa] leading-relaxed">
-                Workflowy n8n, integracje API, scrapery, boty Slack/Discord. Łączymy narzędzia w sprawnie działające pipeline&apos;y.
+                Łączymy Twoje narzędzia tak, żeby same wykonywały powtarzalną robotę: pobieranie danych, wysyłanie powiadomień, raporty, synchronizacje.
               </p>
             </div>
             <div className="mt-4">

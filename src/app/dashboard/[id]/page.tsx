@@ -93,7 +93,40 @@ function renderDetailValue(v: unknown): React.ReactNode {
   return String(v);
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  expected_output: "Oczekiwany efekt końcowy",
+  target_audience: "Grupa docelowa",
+  target_users: "Użytkownicy",
+  business_goal: "Główny cel",
+  sections: "Sekcje",
+  visual_style: "Styl wizualny",
+  brand_colors: "Kolory marki",
+  main_cta: "Główny przycisk akcji",
+  integrations: "Integracje",
+  main_features: "Najważniejsze funkcje",
+  auth_method: "Metoda logowania",
+  data_storage: "Przechowywane dane",
+  mobile_priority: "Priorytet mobile",
+  trigger: "Co uruchamia automatyzację",
+  data_sources: "Źródła danych",
+  destinations: "Gdzie zapisywać rezultaty",
+  frequency: "Częstotliwość uruchamiania",
+  error_handling: "Obsługa błędów",
+  existing_tools: "Obecnie używane narzędzia",
+  agent_purpose: "Cel agenta",
+  knowledge_sources: "Źródła wiedzy",
+  review_method: "Sposób sprawdzania efektów",
+  persona: "Sposób zachowania",
+  purpose: "Cel produktu",
+  input_fields: "Pola wejściowe",
+  logic: "Logika / formuły",
+  output_format: "Format wyjścia",
+  save_results: "Zapis wyników",
+  additional_notes: "Dodatkowe uwagi",
+};
+
 function humanizeKey(k: string): string {
+  if (FIELD_LABELS[k]) return FIELD_LABELS[k];
   return k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 }
 

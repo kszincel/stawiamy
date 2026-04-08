@@ -34,59 +34,94 @@ interface FieldDef {
   required?: boolean;
 }
 
+const EXPECTED_OUTPUT: Record<DetailsFormProps["productType"], FieldDef> = {
+  website: {
+    id: "expected_output",
+    label: "Co dokładnie chcesz dostać?",
+    type: "textarea",
+    placeholder: "np. działający landing page pod adresem mojadomena.pl z formularzem kontaktowym, który wysyła leady na mój email",
+  },
+  redesign: {
+    id: "expected_output",
+    label: "Co dokładnie chcesz dostać?",
+    type: "textarea",
+    placeholder: "np. odświeżona strona pod tym samym adresem, z lepszą nawigacją i nowoczesnym designem",
+  },
+  app: {
+    id: "expected_output",
+    label: "Co dokładnie chcesz dostać?",
+    type: "textarea",
+    placeholder: "np. działająca aplikacja pod adresem mojadomena.pl z panelem logowania i bazą klientów",
+  },
+  automation: {
+    id: "expected_output",
+    label: "Co dokładnie chcesz dostać?",
+    type: "textarea",
+    placeholder: "np. działająca automatyzacja, która codziennie o 8:00 wysyła mi raport sprzedaży na maila",
+  },
+  agent: {
+    id: "expected_output",
+    label: "Co dokładnie chcesz dostać?",
+    type: "textarea",
+    placeholder: "np. gotowy plik PDF z gotowym doktoratem, lista leadów w arkuszu, automatyczne odpowiedzi na maile od klientów",
+  },
+  digital_product: {
+    id: "expected_output",
+    label: "Co dokładnie chcesz dostać?",
+    type: "textarea",
+    placeholder: "np. kalkulator dostępny pod linkiem, gotowy do udostępnienia moim klientom",
+  },
+};
+
 const WEBSITE_FIELDS: FieldDef[] = [
   { id: "target_audience", label: "Dla kogo jest ta strona?", type: "textarea", placeholder: "Opisz grupę docelową, branżę, typowego klienta..." },
-  { id: "business_goal", label: "Jaki jest główny cel?", type: "text", placeholder: "np. sprzedaż, leady, prezentacja" },
-  { id: "sections", label: "Jakie sekcje?", type: "multiselect", options: ["Hero", "Features", "Pricing", "Testimonials", "FAQ", "Kontakt", "Blog", "Galeria"] },
-  { id: "visual_style", label: "Styl wizualny", type: "select", options: ["Minimalistyczny", "Bogaty/Kolorowy", "Premium/Editorial", "Korporacyjny", "Eksperymentalny"] },
+  { id: "business_goal", label: "Jaki jest główny cel?", type: "text", placeholder: "np. sprzedaż, pozyskanie kontaktów, prezentacja oferty" },
+  { id: "sections", label: "Jakie sekcje?", type: "multiselect", options: ["Nagłówek główny", "Funkcje / korzyści", "Cennik", "Opinie klientów", "Pytania i odpowiedzi", "Kontakt", "Blog", "Galeria"] },
+  { id: "visual_style", label: "Styl wizualny", type: "select", options: ["Minimalistyczny", "Bogaty / kolorowy", "Elegancki / klasyczny", "Korporacyjny", "Odważny / nietypowy"] },
   { id: "brand_colors", label: "Kolory marki (jeśli są)", type: "text", placeholder: "np. granat #1a2b4c, akcent pomarańczowy" },
   { id: "main_cta", label: "Główny przycisk akcji", type: "text", placeholder: "np. 'Kup teraz', 'Zostaw kontakt'" },
-  { id: "integrations", label: "Potrzebne integracje?", type: "text", placeholder: "Stripe, Mailchimp, analytics..." },
+  { id: "integrations", label: "Czy strona ma być z czymś połączona?", type: "text", placeholder: "np. system płatności, newsletter, statystyki" },
 ];
 
 const APP_FIELDS: FieldDef[] = [
-  { id: "target_users", label: "Kto będzie korzystał z aplikacji?", type: "textarea", placeholder: "Role, persony, scenariusze użycia..." },
-  { id: "main_features", label: "Najważniejsze funkcje", type: "textarea", placeholder: "Lista najważniejszych funkcjonalności" },
-  { id: "auth_method", label: "Logowanie", type: "select", options: ["Bez logowania", "Email + hasło", "Magic link", "Google OAuth", "Inne"] },
+  { id: "target_users", label: "Kto będzie korzystał z aplikacji?", type: "textarea", placeholder: "Kim są użytkownicy, do czego im to potrzebne..." },
+  { id: "main_features", label: "Najważniejsze funkcje", type: "textarea", placeholder: "Lista rzeczy, które aplikacja musi umieć" },
+  { id: "auth_method", label: "Logowanie", type: "select", options: ["Bez logowania", "Email + hasło", "Link wysyłany na maila", "Konto Google", "Inne"] },
   { id: "data_storage", label: "Jakie dane będą przechowywane?", type: "text", placeholder: "np. profile użytkowników, zamówienia..." },
-  { id: "integrations", label: "Integracje z zewnętrznymi API?", type: "text", placeholder: "np. Stripe, Google Maps, OpenAI..." },
-  { id: "mobile_priority", label: "Priorytet mobile", type: "select", options: ["Tylko desktop", "Mobile-first", "Responsywne"] },
+  { id: "integrations", label: "Czy aplikacja ma być z czymś połączona?", type: "text", placeholder: "np. system płatności, mapy, kalendarz" },
+  { id: "mobile_priority", label: "Gdzie ma działać", type: "select", options: ["Tylko komputer", "Głównie telefon", "Komputer i telefon"] },
 ];
 
 const AUTOMATION_FIELDS: FieldDef[] = [
-  { id: "trigger", label: "Co ma uruchamiać automatyzację?", type: "textarea", placeholder: "np. nowy email, cron, webhook, zmiana w bazie" },
-  { id: "data_sources", label: "Skąd ma pobierać dane?", type: "textarea", placeholder: "np. Gmail, Google Sheets, API..." },
-  { id: "destinations", label: "Gdzie ma wysyłać/zapisywać rezultaty?", type: "textarea", placeholder: "np. Slack, baza danych, email..." },
+  { id: "trigger", label: "Co ma uruchamiać automatyzację?", type: "textarea", placeholder: "np. nowy mail, kalendarz, formularz na stronie, ręczne uruchomienie" },
+  { id: "data_sources", label: "Skąd ma pobierać dane?", type: "textarea", placeholder: "np. Gmail, Google Sheets, plik z dysku, strona www..." },
+  { id: "destinations", label: "Gdzie ma wysyłać / zapisywać efekty?", type: "textarea", placeholder: "np. mail, Slack, arkusz kalkulacyjny, baza..." },
   { id: "frequency", label: "Jak często ma się uruchamiać?", type: "text", placeholder: "np. co godzinę, raz dziennie, na żądanie" },
-  { id: "error_handling", label: "Co ma się dziać przy błędach?", type: "text", placeholder: "powiadomienie, retry, log" },
-  { id: "existing_tools", label: "Z jakich narzędzi już korzystasz?", type: "text", placeholder: "n8n, Zapier, Make..." },
+  { id: "error_handling", label: "Co ma się dziać przy błędach?", type: "text", placeholder: "np. powiadom mnie mailem, spróbuj ponownie" },
+  { id: "existing_tools", label: "Z jakich narzędzi już korzystasz?", type: "text", placeholder: "np. Excel, Google Workspace, CRM..." },
 ];
 
 const AGENT_FIELDS: FieldDef[] = [
   { id: "agent_purpose", label: "Co dokładnie ma robić agent?", type: "textarea", placeholder: "Główne zadanie i kontekst..." },
-  { id: "input_format", label: "Jak agent będzie otrzymywał polecenia?", type: "text", placeholder: "chat, formularz, API, email" },
-  { id: "output_format", label: "W jakim formacie ma zwracać odpowiedź?", type: "text", placeholder: "tekst, JSON, PDF, email..." },
-  { id: "knowledge_sources", label: "Z jakiej wiedzy ma korzystać?", type: "textarea", placeholder: "dokumenty, baza danych, web scraping, własna wiedza" },
-  { id: "tools_needed", label: "Jakie narzędzia ma mieć dostępne?", type: "textarea", placeholder: "np. Google search, kalkulator, czytanie PDF, wysyłanie emaili" },
+  { id: "knowledge_sources", label: "Z jakiej wiedzy ma korzystać?", type: "textarea", placeholder: "dokumenty, baza danych, strony www, własna wiedza" },
+  { id: "review_method", label: "Jak chcesz sprawdzać efekty jego pracy?", type: "text", placeholder: "np. mailem, w panelu, czatem" },
   { id: "persona", label: "Jak ma się zachowywać?", type: "text", placeholder: "formalny, przyjacielski, ekspert" },
-  { id: "escalation", label: "Kiedy ma przekazać do człowieka?", type: "text", placeholder: "np. gdy nie zna odpowiedzi" },
 ];
 
 const DIGITAL_PRODUCT_FIELDS: FieldDef[] = [
-  { id: "purpose", label: "Co ma robić ten produkt cyfrowy?", type: "textarea", placeholder: "Główna wartość dla użytkownika..." },
-  { id: "input_fields", label: "Jakie pola wejściowe?", type: "textarea", placeholder: "Lista pól, jakie wypełnia użytkownik" },
-  { id: "logic", label: "Jaka logika/formuły?", type: "textarea", placeholder: "Opis działania (jeśli kalkulator)" },
-  { id: "output_format", label: "Format wyjścia", type: "text", placeholder: "PDF, lista, wykres, tekst" },
-  { id: "save_results", label: "Czy zapisywać wyniki?", type: "select", options: ["Nie", "Tak, lokalnie w przeglądarce", "Tak, w bazie danych"] },
+  { id: "purpose", label: "Co ma robić ten produkt?", type: "textarea", placeholder: "Główna wartość dla użytkownika..." },
+  { id: "input_fields", label: "Co użytkownik wpisuje / wybiera?", type: "textarea", placeholder: "Lista pól, jakie wypełnia użytkownik" },
+  { id: "logic", label: "Jak ma działać?", type: "textarea", placeholder: "Opisz działanie (np. jeśli kalkulator - jakie wzory)" },
+  { id: "save_results", label: "Czy zapisywać wyniki?", type: "select", options: ["Nie", "Tak, w przeglądarce użytkownika", "Tak, u nas w bazie"] },
 ];
 
 const REQUIRED_BY_TYPE: Record<DetailsFormProps["productType"], string[]> = {
-  website: ["target_audience", "business_goal", "sections", "visual_style", "main_cta"],
-  redesign: ["target_audience", "business_goal", "sections", "visual_style", "main_cta"],
-  app: ["target_users", "main_features", "auth_method", "mobile_priority"],
-  automation: ["trigger", "data_sources", "destinations", "frequency"],
-  agent: ["agent_purpose", "input_format", "output_format", "knowledge_sources", "tools_needed"],
-  digital_product: ["purpose", "input_fields", "output_format", "save_results"],
+  website: ["expected_output", "target_audience", "business_goal", "sections", "visual_style", "main_cta"],
+  redesign: ["expected_output", "target_audience", "business_goal", "sections", "visual_style", "main_cta"],
+  app: ["expected_output", "target_users", "main_features", "auth_method", "mobile_priority"],
+  automation: ["expected_output", "trigger", "data_sources", "destinations", "frequency"],
+  agent: ["expected_output", "agent_purpose", "knowledge_sources"],
+  digital_product: ["expected_output", "purpose", "input_fields", "save_results"],
 };
 
 function getFieldsForType(type: DetailsFormProps["productType"]): FieldDef[] {
@@ -110,7 +145,11 @@ function getFieldsForType(type: DetailsFormProps["productType"]): FieldDef[] {
       base = DIGITAL_PRODUCT_FIELDS;
       break;
   }
-  return base.map((f) => ({ ...f, required: required.includes(f.id) }));
+  // Always start with the "expected_output" field — it's the most important question
+  return [EXPECTED_OUTPUT[type], ...base].map((f) => ({
+    ...f,
+    required: required.includes(f.id),
+  }));
 }
 
 const inputClass =
@@ -352,7 +391,7 @@ export default function DetailsForm({
             : "Wysyłanie..."
           : isEdit
           ? "Zapisz zmiany"
-          : "Wyślij i otrzymaj brief"}
+          : "Wyślij szczegóły"}
       </button>
     </form>
   );

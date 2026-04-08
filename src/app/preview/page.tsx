@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import DetailsForm from "../components/DetailsForm";
+import PaymentSection from "../dashboard/[id]/PaymentSection";
 
 type ProductType =
   | "website"
@@ -153,9 +154,9 @@ function SubmittedSuccess({ projectId, contactEmail }: { projectId: string; cont
         <span className="material-symbols-outlined text-3xl text-[#81ecff]">check</span>
       </div>
       <div className="max-w-lg">
-        <h2 className="text-2xl font-bold text-white mb-3">Świetnie!</h2>
+        <h2 className="text-2xl font-bold text-white mb-3">Dzięki!</h2>
         <p className="text-[#adaaaa] leading-relaxed mb-2">
-          Otrzymaliśmy Twoje zgłoszenie. Aby kontynuować (zapłacić zaliczkę i śledzić postęp), zapisz sobie ten link do projektu:
+          Otrzymaliśmy Twoją zaliczkę i zaczynamy pracę. Zapisz sobie link do projektu, żeby śledzić postęp:
         </p>
       </div>
 
@@ -171,7 +172,7 @@ function SubmittedSuccess({ projectId, contactEmail }: { projectId: string; cont
       </div>
 
       <p className="text-xs text-[#adaaaa] max-w-md">
-        Wysłaliśmy też magic link na <strong className="text-white">{contactEmail}</strong> - kliknij go żeby zalogować się i śledzić postęp w panelu klienta. Sprawdź też folder spam.
+        Wysłaliśmy też link logowania na <strong className="text-white">{contactEmail}</strong> - kliknij go żeby śledzić postęp w panelu klienta. Sprawdź też folder spam.
       </p>
 
       <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -180,7 +181,7 @@ function SubmittedSuccess({ projectId, contactEmail }: { projectId: string; cont
           disabled={resendState === "sending" || !contactEmail}
           className="rounded-full border border-[#484847] text-[#adaaaa] hover:text-white hover:border-[#81ecff] font-medium px-5 py-2.5 text-sm transition-colors disabled:opacity-40"
         >
-          {resendState === "sending" ? "Wysyłanie..." : resendState === "sent" ? "Wysłano ✓" : resendState === "error" ? "Błąd, spróbuj ponownie" : "Wyślij magic link ponownie"}
+          {resendState === "sending" ? "Wysyłanie..." : resendState === "sent" ? "Wysłano ✓" : resendState === "error" ? "Błąd, spróbuj ponownie" : "Wyślij link logowania ponownie"}
         </button>
         <a
           href={`/preview?id=${projectId}`}
@@ -266,21 +267,31 @@ function BriefRenderer({ brief }: { brief: string }) {
   );
 }
 
-const FINALIZED_STATUSES = new Set([
+// Statuses where the form has been submitted but deposit isn't paid yet —
+// we should show the inline PaymentSection.
+const PAYMENT_PENDING_STATUSES = new Set([
   "details_submitted",
+  "finalized",
+]);
+
+// Statuses indicating the deposit was already paid — show the success screen.
+const PAID_STATUSES = new Set([
+  "deposit_paid",
   "in_progress",
   "delivered",
-  "finalized",
 ]);
 
 function PreviewContent() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get("id") || "";
+  const paymentParam = searchParams.get("payment");
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string>("");
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
+  // Local override after the form is submitted, so we don't have to wait for
+  // the next refetch to switch to the payment step.
+  const [detailsJustSubmitted, setDetailsJustSubmitted] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const status: "loading" | "ready" | "error" = error
@@ -359,7 +370,11 @@ function PreviewContent() {
     ? `https://api.microlink.io/?url=${encodeURIComponent(project.source_url)}&screenshot=true&meta=false&embed=screenshot.url`
     : null;
 
-  const isFinalized = project ? FINALIZED_STATUSES.has(project.status) : false;
+  const isPaid = project ? PAID_STATUSES.has(project.status) : false;
+  const isPaymentPending =
+    project ? PAYMENT_PENDING_STATUSES.has(project.status) || detailsJustSubmitted : false;
+  // After Stripe redirects back, show the success screen.
+  const showSuccessScreen = isPaid || paymentParam === "success";
 
   return (
     <div className="min-h-screen bg-[#0e0e0e] text-white font-[var(--font-inter)]">
@@ -388,7 +403,7 @@ function PreviewContent() {
         {project?.prompt && (
           <div className="mb-10">
             <span className="text-xs font-medium text-[#adaaaa] uppercase tracking-wider mb-3 block">
-              Twój brief
+              Twój opis
             </span>
             <div className="rounded-[0.5rem] border border-[#484847] bg-[#1a1a1a] p-6">
               <p className="text-white leading-relaxed">{project.prompt}</p>
@@ -490,10 +505,6 @@ function PreviewContent() {
               </div>
             )}
 
-            {project.attachments && project.attachments.length > 0 && (
-              <AttachmentsCard attachments={project.attachments} />
-            )}
-
             {project.preview_type === "design" && (sourceScreenshotUrl || sourceImages.length > 0) && (
               <span className="text-xs font-medium text-[#81ecff] uppercase tracking-wider block">
                 Nowy design
@@ -504,13 +515,13 @@ function PreviewContent() {
             {project.preview_type === "brief" && project.brief ? (
               <div>
                 <p className="text-sm text-[#adaaaa] mb-3">
-                  Tak będzie wyglądać Twoja automatyzacja:
+                  Tak będzie działać Twoje rozwiązanie:
                 </p>
                 <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-8">
                   <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[#484847]/50">
                     <span className="material-symbols-outlined text-[#c3f400]">description</span>
                     <span className="text-sm font-bold text-white uppercase tracking-wider">
-                      Brief techniczny
+                      Plan działania
                     </span>
                   </div>
                   <BriefRenderer brief={project.brief} />
@@ -626,21 +637,44 @@ function PreviewContent() {
                 </div>
 
                 <p className="text-sm text-[#adaaaa] leading-relaxed">
-                  Wypełnij formularz poniżej żeby otrzymać szczegółowy brief i wycenę.
+                  Wypełnij formularz poniżej, żeby doprecyzować szczegóły i potwierdzić zamówienie.
                 </p>
               </div>
             </div>
 
-            {/* Details form / success */}
+            {project.attachments && project.attachments.length > 0 && (
+              <AttachmentsCard attachments={project.attachments} />
+            )}
+
+            {/* Details form → payment → success */}
             <div className="pt-4 border-t border-[#484847]/30">
-              {submitted || isFinalized ? (
+              {showSuccessScreen ? (
                 <SubmittedSuccess projectId={project.id} contactEmail={project.contact_email} />
+              ) : isPaymentPending ? (
+                <div className="pt-8 space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                      Ostatni krok: opłać zaliczkę
+                    </h2>
+                    <p className="text-sm text-[#adaaaa]">
+                      Rozpoczynamy pracę zaraz po otrzymaniu zaliczki. Resztę zapłacisz przy odbiorze.
+                    </p>
+                  </div>
+                  <PaymentSection
+                    projectId={project.id}
+                    depositAmount={project.deposit_amount}
+                  />
+                </div>
               ) : (
                 <div className="pt-8">
                   <DetailsForm
                     projectId={project.id}
                     productType={project.product_type}
-                    onSuccess={() => setSubmitted(true)}
+                    onSuccess={() => {
+                      setDetailsJustSubmitted(true);
+                      // Refetch so we get the latest contact_email/status from server
+                      fetchProject();
+                    }}
                   />
                 </div>
               )}
@@ -658,7 +692,7 @@ function PreviewContent() {
                   <span className="material-symbols-outlined text-base">
                     code
                   </span>
-                  Zobacz interaktywny podgląd HTML
+                  Zobacz interaktywny podgląd
                   <span className="material-symbols-outlined text-base">
                     arrow_outward
                   </span>

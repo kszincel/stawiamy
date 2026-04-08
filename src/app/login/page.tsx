@@ -41,7 +41,7 @@ export default function LoginPage() {
         <div className="rounded-[0.75rem] border border-[#484847] bg-[#131313] p-8">
           <h1 className="text-2xl font-bold text-white mb-2">Zaloguj się do panelu</h1>
           <p className="text-sm text-[#adaaaa] mb-8">
-            Wyślemy Ci magic link na email — kliknij go, żeby się zalogować.
+            Wyślemy Ci link logowania na email - kliknij go, żeby się zalogować.
           </p>
 
           {status === "sent" ? (
@@ -52,7 +52,7 @@ export default function LoginPage() {
               <div>
                 <h2 className="text-lg font-bold text-white mb-1">Sprawdź email</h2>
                 <p className="text-sm text-[#adaaaa]">
-                  Wysłaliśmy magic link na <span className="text-white">{email}</span>
+                  Wysłaliśmy link logowania na <span className="text-white">{email}</span>
                 </p>
               </div>
             </div>
@@ -83,7 +83,7 @@ export default function LoginPage() {
                 disabled={status === "loading"}
                 className="w-full rounded-full bg-[#c3f400] text-[#0e0e0e] font-bold px-6 py-3 text-sm hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
               >
-                {status === "loading" ? "Wysyłanie..." : "Wyślij magic link"}
+                {status === "loading" ? "Wysyłanie..." : "Wyślij link logowania"}
               </button>
             </form>
           )}

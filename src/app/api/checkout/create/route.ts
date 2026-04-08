@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { supabase as supabaseService } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
 
 interface Body {
@@ -7,6 +8,25 @@ interface Body {
 }
 
 const ADMIN_EMAIL = "konrad@ikonmedia.pl";
+
+async function sendMagicLink(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  email: string,
+  projectId: string,
+  baseUrl: string
+) {
+  try {
+    await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard/${projectId}`,
+        shouldCreateUser: true,
+      },
+    });
+  } catch (e) {
+    console.error("Magic link error:", e);
+  }
+}
 
 async function triggerN8n(project: Record<string, unknown>) {
   const webhookUrl = process.env.N8N_WEBHOOK_URL;
@@ -55,11 +75,11 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user?.email) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: project, error: projectError } = await supabase
+    // Allow guest checkout: if user is not logged in we still permit payment as
+    // long as the project has a contact_email (i.e. they just submitted the
+    // details form). The projectId is a UUID and effectively unguessable, so
+    // possessing it serves as the access token for the guest flow.
+    const { data: project, error: projectError } = await supabaseService
       .from("projects")
       .select("*")
       .eq("id", projectId)
@@ -69,11 +89,21 @@ export async function POST(request: Request) {
       return Response.json({ error: "Projekt nie istnieje" }, { status: 404 });
     }
 
-    const isAdmin = user.email === ADMIN_EMAIL;
-    const isOwner = project.contact_email === user.email;
-    if (!isAdmin && !isOwner) {
-      return Response.json({ error: "Brak dostępu" }, { status: 403 });
+    if (!project.contact_email) {
+      return Response.json(
+        { error: "Najpierw uzupełnij dane kontaktowe" },
+        { status: 400 }
+      );
     }
+
+    if (user?.email) {
+      const isAdmin = user.email === ADMIN_EMAIL;
+      const isOwner = project.contact_email === user.email;
+      if (!isAdmin && !isOwner) {
+        return Response.json({ error: "Brak dostępu" }, { status: 403 });
+      }
+    }
+    // Guest path: no user, but has matching contact_email on project — allowed.
 
     if (!project.deposit_amount || project.deposit_amount <= 0) {
       return Response.json(
@@ -88,7 +118,7 @@ export async function POST(request: Request) {
 
     if (discountCode && discountCode.trim()) {
       const normalized = discountCode.trim().toUpperCase();
-      const { data: dc } = await supabase
+      const { data: dc } = await supabaseService
         .from("discount_codes")
         .select("code, discount_percent, max_uses, used_count, active, expires_at")
         .eq("code", normalized)
@@ -114,7 +144,7 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_SITE_URL || "https://stawiamy.vercel.app";
 
     if (finalAmount === 0) {
-      const { data: updated, error: updateErr } = await supabase
+      const { data: updated, error: updateErr } = await supabaseService
         .from("projects")
         .update({
           status: "deposit_paid",
@@ -135,13 +165,13 @@ export async function POST(request: Request) {
 
       if (appliedCode) {
         // Increment used_count
-        const { data: dcRow } = await supabase
+        const { data: dcRow } = await supabaseService
           .from("discount_codes")
           .select("used_count")
           .eq("code", appliedCode)
           .single();
         if (dcRow) {
-          await supabase
+          await supabaseService
             .from("discount_codes")
             .update({ used_count: (dcRow.used_count || 0) + 1 })
             .eq("code", appliedCode);
@@ -149,10 +179,11 @@ export async function POST(request: Request) {
       }
 
       await triggerN8n(updated);
+      await sendMagicLink(supabase, project.contact_email, projectId, baseUrl);
 
       return Response.json({
         free: true,
-        redirectUrl: `/dashboard/${projectId}?payment=success`,
+        redirectUrl: `/preview?id=${projectId}&payment=success`,
       });
     }
 
@@ -176,8 +207,8 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/dashboard/${projectId}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/dashboard/${projectId}?payment=cancelled`,
+      success_url: `${baseUrl}/preview?id=${projectId}&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/preview?id=${projectId}&payment=cancelled`,
       metadata: {
         project_id: projectId,
         discount_code: appliedCode || "",
@@ -187,10 +218,13 @@ export async function POST(request: Request) {
       customer_email: project.contact_email || undefined,
     });
 
-    await supabase
+    await supabaseService
       .from("projects")
       .update({ stripe_session_id: session.id })
       .eq("id", projectId);
+
+    // Best-effort: send magic link so user can return to dashboard later
+    await sendMagicLink(supabase, project.contact_email, projectId, baseUrl);
 
     return Response.json({ url: session.url, sessionId: session.id });
   } catch (e) {

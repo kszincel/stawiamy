@@ -41,22 +41,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // No n8n webhook here - it only fires after deposit payment via /api/project/[id]/status
-
-    // Send magic link so user can track progress in dashboard (best-effort)
-    try {
-      const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "https://stawiamy.vercel.app";
-      await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard/${project.id}`,
-          shouldCreateUser: true,
-        },
-      });
-    } catch (e) {
-      console.error("Magic link error:", e);
-    }
+    // No n8n webhook here - it only fires after deposit payment.
+    // Magic link is also sent later (after the user starts checkout) so we
+    // don't email them until they actually intend to pay.
 
     return Response.json({
       success: true,
