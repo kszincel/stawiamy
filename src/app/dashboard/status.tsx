@@ -5,7 +5,8 @@ export type ProjectStatus =
   | "deposit_paid"
   | "in_progress"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "archived";
 
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   preview_generating: "Generowanie podglądu",
@@ -15,6 +16,7 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   in_progress: "W realizacji",
   delivered: "Dostarczony",
   cancelled: "Anulowany",
+  archived: "Zarchiwizowany",
 };
 
 export const STATUS_COLORS: Record<ProjectStatus, { bg: string; text: string; border: string }> = {
@@ -25,6 +27,7 @@ export const STATUS_COLORS: Record<ProjectStatus, { bg: string; text: string; bo
   in_progress: { bg: "rgba(129,236,255,0.1)", text: "#81ecff", border: "rgba(129,236,255,0.4)" },
   delivered: { bg: "rgba(34,197,94,0.1)", text: "#22c55e", border: "rgba(34,197,94,0.4)" },
   cancelled: { bg: "rgba(255,113,108,0.1)", text: "#ff716c", border: "rgba(255,113,108,0.4)" },
+  archived: { bg: "rgba(173,170,170,0.1)", text: "#adaaaa", border: "rgba(173,170,170,0.3)" },
 };
 
 export function StatusBadge({ status }: { status: string }) {

@@ -12,6 +12,7 @@ const ORDER: ProjectStatus[] = [
   "in_progress",
   "delivered",
   "cancelled",
+  "archived",
 ];
 
 export default function StatusUpdater({

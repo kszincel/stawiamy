@@ -31,20 +31,27 @@ function formatPrice(n: number | null) {
   return `${n.toLocaleString("pl-PL")} PLN`;
 }
 
-type FilterKey = "all" | "paid" | "unpaid" | "cancelled";
+type FilterKey = "all" | "paid" | "delivered" | "unpaid" | "cancelled" | "archived";
+
+// "all" excludes delivered, archived, cancelled — shows only active work
+const HIDDEN_FROM_ALL = new Set(["delivered", "cancelled", "archived"]);
 
 const FILTER_STATUSES: Record<FilterKey, string[] | null> = {
-  all: null,
-  paid: ["deposit_paid", "in_progress", "delivered"],
+  all: null, // special handling: excludes HIDDEN_FROM_ALL
+  paid: ["deposit_paid", "in_progress"],
+  delivered: ["delivered"],
   unpaid: ["preview_generating", "preview_ready", "finalized"],
   cancelled: ["cancelled"],
+  archived: ["archived"],
 };
 
 const FILTER_LABELS: Record<FilterKey, string> = {
-  all: "Wszystkie",
+  all: "Aktywne",
   paid: "Opłacone",
+  delivered: "Dostarczone",
   unpaid: "Nieopłacone",
   cancelled: "Anulowane",
+  archived: "Archiwum",
 };
 
 export default async function DashboardPage({
@@ -77,22 +84,26 @@ export default async function DashboardPage({
 
   const allList: Project[] = (projects ?? []) as Project[];
 
-  // Admin filter. Default: "paid" for admin, "all" for non-admin.
-  const defaultFilter: FilterKey = isAdmin ? "paid" : "all";
+  // Admin filter. Default: "all" (Aktywne - excludes delivered/archived/cancelled).
+  const defaultFilter: FilterKey = "all";
   const activeFilter: FilterKey = isAdmin && filterParam && filterParam in FILTER_STATUSES
     ? (filterParam as FilterKey)
     : defaultFilter;
   const filterStatuses = FILTER_STATUSES[activeFilter];
-  const list: Project[] = filterStatuses
+  const list: Project[] = activeFilter === "all"
+    ? allList.filter((p) => !p.status || !HIDDEN_FROM_ALL.has(p.status))
+    : filterStatuses
     ? allList.filter((p) => p.status && filterStatuses.includes(p.status))
     : allList;
 
   // Counts per filter (computed from full list, for tab badges)
   const filterCounts: Record<FilterKey, number> = {
-    all: allList.length,
+    all: allList.filter((p) => !p.status || !HIDDEN_FROM_ALL.has(p.status)).length,
     paid: allList.filter((p) => p.status && FILTER_STATUSES.paid!.includes(p.status)).length,
+    delivered: allList.filter((p) => p.status && FILTER_STATUSES.delivered!.includes(p.status)).length,
     unpaid: allList.filter((p) => p.status && FILTER_STATUSES.unpaid!.includes(p.status)).length,
     cancelled: allList.filter((p) => p.status && FILTER_STATUSES.cancelled!.includes(p.status)).length,
+    archived: allList.filter((p) => p.status && FILTER_STATUSES.archived!.includes(p.status)).length,
   };
 
   // Stats for admin (always computed from full list, ignoring active filter)
