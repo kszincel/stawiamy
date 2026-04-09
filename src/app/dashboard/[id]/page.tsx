@@ -9,6 +9,7 @@ import PaymentToast from "./PaymentToast";
 import RecommendedActions from "./RecommendedActions";
 import AdminChat from "./AdminChat";
 import ArtifactViewer from "./ArtifactViewer";
+import WorkspaceLauncher from "./WorkspaceLauncher";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export const dynamic = "force-dynamic";
@@ -493,6 +494,8 @@ export default async function ProjectDetailPage({
             <span className="material-symbols-outlined text-base">lock</span>
             Sekcje widoczne tylko dla admina
           </div>
+
+          <WorkspaceLauncher projectId={project.id} />
 
           <Section title="Chat z Claude">
             <AdminChat projectId={project.id} />
