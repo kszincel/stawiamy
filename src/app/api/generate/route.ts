@@ -45,7 +45,7 @@ function describeAttachmentType(type: string): string {
   return type;
 }
 
-function attachmentsBlock(attachments?: Attachment[]): string {
+function attachmentsBlock(attachments?: Attachment[], inlinedTexts?: Map<string, string>): string {
   if (!attachments || attachments.length === 0) return "";
   const lines = attachments
     .map(
@@ -53,7 +53,50 @@ function attachmentsBlock(attachments?: Attachment[]): string {
         `- ${a.filename} (${describeAttachmentType(a.type)}, ${formatFileSize(a.size)})`
     )
     .join("\n");
-  return `\n\nKlient załączył pliki:\n${lines}`;
+  let block = `\n\nKlient załączył pliki:\n${lines}`;
+
+  if (inlinedTexts && inlinedTexts.size > 0) {
+    block += "\n\nTreść załączników tekstowych:";
+    for (const [filename, content] of inlinedTexts) {
+      block += `\n\n--- ${filename} ---\n${content}\n--- koniec ${filename} ---`;
+    }
+  }
+  return block;
+}
+
+const TEXT_EXTENSIONS = new Set(["md", "txt", "csv", "json", "xml", "html", "yaml", "yml"]);
+const TEXT_MIMES = new Set(["text/plain", "text/markdown", "text/csv", "application/json"]);
+const MAX_INLINE_SIZE = 12000; // chars per file
+
+function isTextFile(a: Attachment): boolean {
+  if (TEXT_MIMES.has(a.type)) return true;
+  const ext = a.filename.split(".").pop()?.toLowerCase() || "";
+  return TEXT_EXTENSIONS.has(ext);
+}
+
+async function fetchTextAttachments(attachments?: Attachment[]): Promise<Map<string, string>> {
+  const results = new Map<string, string>();
+  if (!attachments) return results;
+
+  const textFiles = attachments.filter(isTextFile);
+  if (textFiles.length === 0) return results;
+
+  await Promise.all(
+    textFiles.map(async (a) => {
+      try {
+        const res = await fetch(a.url);
+        if (!res.ok) return;
+        let text = await res.text();
+        if (text.length > MAX_INLINE_SIZE) {
+          text = text.slice(0, MAX_INLINE_SIZE) + `\n\n[...obcięto, łącznie ${text.length} znaków]`;
+        }
+        results.set(a.filename, text);
+      } catch {
+        // silent - binary file or network error
+      }
+    })
+  );
+  return results;
 }
 
 interface Classification {
@@ -103,7 +146,8 @@ async function callOpenRouter(
 async function classifyPrompt(
   prompt: string,
   hasImages: boolean,
-  hasUrl: boolean
+  hasUrl: boolean,
+  inlinedTexts?: Map<string, string>
 ): Promise<Classification> {
   const context = hasImages || hasUrl
     ? "\nUWAGA: Klient podał istniejącą stronę (URL lub screeny) - to prawdopodobnie redesign."
@@ -137,7 +181,17 @@ Odpowiedz TYLKO prawidłowym JSON-em (bez markdown, bez backticks):
   "timeline": "szacowany czas po polsku (dla automation/agent ZAWSZE '24-72h', dla digital_product '24-72h', dla website 'do 7 dni', dla app/custom '7-14 dni', dla redesign '3-7 dni')"
 }${context}`;
 
-  const content = await callOpenRouter(systemPrompt, prompt, 800);
+  // If text attachments are available, append their content to the user prompt
+  let enrichedPrompt = prompt;
+  if (inlinedTexts && inlinedTexts.size > 0) {
+    let attachmentContext = "\n\nTreść załączonych plików tekstowych:";
+    for (const [filename, content] of inlinedTexts) {
+      attachmentContext += `\n\n--- ${filename} ---\n${content}\n--- koniec ${filename} ---`;
+    }
+    enrichedPrompt = prompt + attachmentContext;
+  }
+
+  const content = await callOpenRouter(systemPrompt, enrichedPrompt, 800);
   const cleaned = content.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
   return JSON.parse(cleaned) as Classification;
 }
@@ -146,9 +200,8 @@ async function enhancePromptForStitch(
   prompt: string,
   classification: Classification,
   sourceUrl?: string,
-  attachments?: Attachment[]
+  inlinedTexts?: Map<string, string>
 ): Promise<string> {
-  void attachments;
   const redesignContext = sourceUrl
     ? `\n\nThis is a REDESIGN of an existing site: ${sourceUrl}. Improve the design while keeping the core purpose. Modernize layout, typography, colors.`
     : "";
@@ -188,10 +241,10 @@ Classification:
 - Type: ${classification.product_type}
 - Description: ${classification.description}
 - Key features: ${classification.features.join(", ")}${redesignContext}
-
+${inlinedTexts && inlinedTexts.size > 0 ? `\nDetailed brief from attached files:\n${[...inlinedTexts.entries()].map(([f, c]) => `--- ${f} ---\n${c}\n--- end ${f} ---`).join("\n\n")}` : ""}
 TASK: Write a Stitch prompt for ${screenType}. ${layoutHint}
 
-Make it specific, premium, and unique to this client. Avoid generic "modern app" templates - inject character matching the client's actual idea. Use confident, specific copy in your example headlines (not "Welcome to X" or "Discover Y" - real, opinionated copy).`;
+Make it specific, premium, and unique to this client. Avoid generic "modern app" templates - inject character matching the client's actual idea. Use confident, specific copy in your example headlines (not "Welcome to X" or "Discover Y" - real, opinionated copy). If a detailed brief was provided in attachments, use its specifics (colors, sections, copy, features) directly.`;
 
   return callOpenRouter(systemPrompt, userPrompt, 800);
 }
@@ -199,7 +252,8 @@ Make it specific, premium, and unique to this client. Avoid generic "modern app"
 async function generateBrief(
   prompt: string,
   classification: Classification,
-  attachments?: Attachment[]
+  attachments?: Attachment[],
+  inlinedTexts?: Map<string, string>
 ): Promise<string> {
   const systemPrompt = `Jesteś senior automation engineer / AI engineer. Klient opisał potrzebę automatyzacji lub agenta AI.
 
@@ -228,7 +282,7 @@ Maks 200 słów. Bez marketingowego bełkotu. Konkret.`;
 
 Klasyfikacja: ${classification.product_type} (${classification.package})
 Opis: ${classification.description}
-Kluczowe elementy: ${classification.features.join(", ")}${attachmentsBlock(attachments)}
+Kluczowe elementy: ${classification.features.join(", ")}${attachmentsBlock(attachments, inlinedTexts)}
 
 Napisz brief techniczny. Jeśli klient załączył pliki, odnieś się do nich w briefie (np. wskaż gdzie zostaną wykorzystane jako źródło danych lub kontekst).`;
 
@@ -251,11 +305,15 @@ export async function POST(request: Request) {
       return Response.json({ error: "Prompt jest wymagany" }, { status: 400 });
     }
 
+    // Fetch text attachment contents (MD briefs, TXT, CSV, JSON) for richer context
+    const inlinedTexts = await fetchTextAttachments(attachments);
+
     // Step 1: Classify (fast - ~3s)
     const classification = await classifyPrompt(
       prompt,
       imageAttachments.length > 0,
-      Boolean(url)
+      Boolean(url),
+      inlinedTexts
     );
 
     // Step 2: Insert into Supabase
@@ -298,7 +356,7 @@ export async function POST(request: Request) {
         const updates: Record<string, unknown> = {};
 
         if (classification.preview_type === "brief") {
-          const brief = await generateBrief(prompt, classification, attachments);
+          const brief = await generateBrief(prompt, classification, attachments, inlinedTexts);
           updates.brief = brief;
         } else {
           try {
@@ -306,7 +364,7 @@ export async function POST(request: Request) {
               prompt,
               classification,
               url,
-              attachments
+              inlinedTexts
             );
 
             const shortPrompt =
