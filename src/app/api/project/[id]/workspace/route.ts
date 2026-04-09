@@ -36,8 +36,8 @@ export async function POST(
       status: "ready",
       workspacePath: project.workspace_path,
       repoUrl: project.workspace_repo_url,
-      sshCommand: `ssh ${HOSTINGER_HOST} 'tmux new -A -s p-${shortId} -c ${project.workspace_path} claude'`,
-      tmuxAttach: `ssh ${HOSTINGER_HOST} 'tmux attach -t p-${shortId}'`,
+      sshCommand: `ssh -t ${HOSTINGER_HOST} "cd ${project.workspace_path} && tmux new -A -s p-${shortId}"`,
+      tmuxAttach: `ssh -t ${HOSTINGER_HOST} "tmux attach -t p-${shortId}"`,
     });
   }
 
@@ -93,8 +93,8 @@ export async function GET(
       status: "ready",
       workspacePath: project.workspace_path,
       repoUrl: project.workspace_repo_url,
-      sshCommand: `ssh ${HOSTINGER_HOST} 'tmux new -A -s p-${shortId} -c ${project.workspace_path} claude'`,
-      tmuxAttach: `ssh ${HOSTINGER_HOST} 'tmux attach -t p-${shortId}'`,
+      sshCommand: `ssh -t ${HOSTINGER_HOST} "cd ${project.workspace_path} && tmux new -A -s p-${shortId}"`,
+      tmuxAttach: `ssh -t ${HOSTINGER_HOST} "tmux attach -t p-${shortId}"`,
     });
   }
 
