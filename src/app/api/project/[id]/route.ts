@@ -71,6 +71,34 @@ export async function PATCH(
   return Response.json({ success: true, project });
 }
 
+const ADMIN_EMAIL = "konrad@ikonmedia.pl";
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const serverClient = await createClient();
+  const {
+    data: { user },
+  } = await serverClient.auth.getUser();
+
+  if (user?.email !== ADMIN_EMAIL) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { error } = await supabase.from("projects").delete().eq("id", id);
+
+  if (error) {
+    return Response.json(
+      { error: `Nie udało się usunąć: ${error.message}` },
+      { status: 500 }
+    );
+  }
+
+  return Response.json({ success: true });
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

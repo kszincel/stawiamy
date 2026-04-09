@@ -10,6 +10,7 @@ import RecommendedActions from "./RecommendedActions";
 import AdminChat from "./AdminChat";
 import ArtifactViewer from "./ArtifactViewer";
 import WorkspaceLauncher from "./WorkspaceLauncher";
+import DeleteProject from "./DeleteProject";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export const dynamic = "force-dynamic";
@@ -565,6 +566,10 @@ export default async function ProjectDetailPage({
               />
             </Section>
           )}
+
+          <div className="pt-4 border-t border-[#484847]/30">
+            <DeleteProject projectId={project.id} />
+          </div>
         </>
       )}
     </div>
