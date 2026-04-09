@@ -6,17 +6,22 @@ set -euo pipefail
 # Run on Hostinger as: ~/bin/sync-project.sh <projectId>
 
 PROJECT_ID="${1:?Usage: sync-project.sh <projectId>}"
-SHORT_ID="${PROJECT_ID:0:8}"
-WORKSPACE="${HOME}/projects/stawiamy-${SHORT_ID}"
 ENV_FILE="${HOME}/.config/stawiamy/.env"
-
-if [[ ! -d "$WORKSPACE" ]]; then
-  echo "ERROR: Workspace ${WORKSPACE} not found."
-  exit 1
-fi
 
 # shellcheck source=/dev/null
 source "$ENV_FILE"
+
+# Resolve workspace path from Supabase (supports slug-based names)
+WORKSPACE=$(curl -sf \
+  "${SUPABASE_URL}/rest/v1/projects?id=eq.${PROJECT_ID}&select=workspace_path" \
+  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Accept: application/vnd.pgrst.object+json" | jq -r '.workspace_path // ""')
+
+if [[ -z "$WORKSPACE" || ! -d "$WORKSPACE" ]]; then
+  echo "ERROR: Workspace not found (path: ${WORKSPACE:-not set in DB})."
+  exit 1
+fi
 
 echo ">>> Syncing workspace ${WORKSPACE} to Supabase..."
 

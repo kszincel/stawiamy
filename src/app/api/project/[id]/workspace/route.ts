@@ -31,13 +31,14 @@ export async function POST(
 
   // Already bootstrapped
   if (project.workspace_path) {
-    const shortId = id.slice(0, 8);
+    // Derive tmux session name from workspace dir name (slug-based)
+    const dirName = project.workspace_path.split("/").pop() || id.slice(0, 8);
     return Response.json({
       status: "ready",
       workspacePath: project.workspace_path,
       repoUrl: project.workspace_repo_url,
-      sshCommand: `ssh -t ${HOSTINGER_HOST} "cd ${project.workspace_path} && tmux new -A -s p-${shortId}"`,
-      tmuxAttach: `ssh -t ${HOSTINGER_HOST} "tmux attach -t p-${shortId}"`,
+      sshCommand: `ssh -t ${HOSTINGER_HOST} "cd ${project.workspace_path} && tmux new -A -s ${dirName}"`,
+      tmuxAttach: `ssh -t ${HOSTINGER_HOST} "tmux attach -t ${dirName}"`,
     });
   }
 

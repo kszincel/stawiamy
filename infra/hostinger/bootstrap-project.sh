@@ -62,9 +62,20 @@ MISSING_INFO=$(echo "$PROJECT_JSON" | jq -r '(.ai_missing_info // []) | if type 
 RECOMMENDED_ACTIONS=$(echo "$PROJECT_JSON" | jq -r '(.ai_recommended_actions // []) | if type == "array" then map("- [ ] " + .) | join("\n") else "" end')
 CREATED_AT=$(echo "$PROJECT_JSON" | jq -r '.created_at // ""')
 
-SHORT_ID="${PROJECT_ID:0:8}"
-WORKSPACE="${PROJECTS_ROOT}/stawiamy-${SHORT_ID}"
-REPO_NAME="stawiamy-${SHORT_ID}"
+# Generate human-readable slug from prompt (e.g. "doktorat-domi", "landing-kancelaria")
+SLUG=$(echo "$PROMPT" | \
+  sed 's/[ąĄ]/a/g; s/[ćĆ]/c/g; s/[ęĘ]/e/g; s/[łŁ]/l/g; s/[ńŃ]/n/g; s/[óÓ]/o/g; s/[śŚ]/s/g; s/[źżŹŻ]/z/g' | \
+  tr '[:upper:]' '[:lower:]' | \
+  sed 's/[^a-z0-9 ]/ /g' | \
+  tr -s ' ' | \
+  awk '{for(i=1;i<=NF && i<=4;i++) printf "%s-",$i}' | \
+  sed 's/-$//' | \
+  cut -c1-40)
+# Fallback if slug is empty
+SLUG="${SLUG:-projekt-${PROJECT_ID:0:8}}"
+
+WORKSPACE="${PROJECTS_ROOT}/${SLUG}"
+REPO_NAME="${SLUG}"
 
 echo ">>> Project: ${PROMPT:0:80}"
 echo ">>> Type: ${PRODUCT_TYPE} / ${PACKAGE}"
