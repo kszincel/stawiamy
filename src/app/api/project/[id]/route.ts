@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase-server";
+import { revalidatePath } from "next/cache";
 
 const LOCKED_STATUSES = new Set(["in_progress", "delivered", "cancelled"]);
 const EDITABLE_FIELDS = ["prompt", "details", "contact_name", "source_url"] as const;
@@ -87,6 +88,17 @@ export async function DELETE(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // First verify the project exists
+  const { data: existing } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", id)
+    .single();
+
+  if (!existing) {
+    return Response.json({ error: "Projekt nie istnieje" }, { status: 404 });
+  }
+
   const { error } = await supabase.from("projects").delete().eq("id", id);
 
   if (error) {
@@ -95,6 +107,9 @@ export async function DELETE(
       { status: 500 }
     );
   }
+
+  // Bust Next.js cache so dashboard list refreshes
+  revalidatePath("/dashboard");
 
   return Response.json({ success: true });
 }

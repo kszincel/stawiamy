@@ -77,10 +77,11 @@ export default async function DashboardPage({
 
   const allList: Project[] = (projects ?? []) as Project[];
 
-  // Admin filter (paid / unpaid / cancelled / all). Non-admin always "all".
+  // Admin filter. Default: "paid" for admin, "all" for non-admin.
+  const defaultFilter: FilterKey = isAdmin ? "paid" : "all";
   const activeFilter: FilterKey = isAdmin && filterParam && filterParam in FILTER_STATUSES
     ? (filterParam as FilterKey)
-    : "all";
+    : defaultFilter;
   const filterStatuses = FILTER_STATUSES[activeFilter];
   const list: Project[] = filterStatuses
     ? allList.filter((p) => p.status && filterStatuses.includes(p.status))
