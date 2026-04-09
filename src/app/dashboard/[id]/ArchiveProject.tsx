@@ -22,6 +22,10 @@ export default function ArchiveProject({
         body: JSON.stringify({ status: isArchived ? "cancelled" : "archived" }),
       });
       if (res.ok) {
+        if (!isArchived) {
+          router.push("/dashboard");
+          return;
+        }
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
