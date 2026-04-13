@@ -61,6 +61,8 @@ PREVIEW_HTML_URL=$(echo "$PROJECT_JSON" | jq -r '.preview_html_url // ""')
 MISSING_INFO=$(echo "$PROJECT_JSON" | jq -r '(.ai_missing_info // []) | if type == "array" then map("- " + .) | join("\n") else "" end')
 RECOMMENDED_ACTIONS=$(echo "$PROJECT_JSON" | jq -r '(.ai_recommended_actions // []) | if type == "array" then map("- [ ] " + .) | join("\n") else "" end')
 CREATED_AT=$(echo "$PROJECT_JSON" | jq -r '.created_at // ""')
+ADMIN_ATTACHMENTS_JSON=$(echo "$PROJECT_JSON" | jq -r '.admin_attachments // []')
+ADMIN_NOTES_JSON=$(echo "$PROJECT_JSON" | jq -r '.admin_notes // []')
 
 # Generate human-readable slug from prompt (e.g. "doktorat-domi", "landing-kancelaria")
 SLUG=$(echo "$PROMPT" | \
@@ -107,6 +109,23 @@ if [[ "$ATTACHMENT_COUNT" -gt 0 ]]; then
   done
 fi
 
+# ─── Download admin attachments ───────────────────────────────────────────
+
+ADMIN_ATTACHMENT_COUNT=$(echo "$ADMIN_ATTACHMENTS_JSON" | jq 'length')
+if [[ "$ADMIN_ATTACHMENT_COUNT" -gt 0 ]]; then
+  echo ">>> Downloading ${ADMIN_ATTACHMENT_COUNT} admin attachments..."
+  mkdir -p "${WORKSPACE}/attachments/admin"
+
+  echo "$ADMIN_ATTACHMENTS_JSON" | jq -c '.[]' | while read -r att; do
+    ATT_URL=$(echo "$att" | jq -r '.url')
+    ATT_FILENAME=$(echo "$att" | jq -r '.filename')
+    if [[ -n "$ATT_URL" && -n "$ATT_FILENAME" && ! -f "${WORKSPACE}/attachments/admin/${ATT_FILENAME}" ]]; then
+      echo "    Downloading: ${ATT_FILENAME}"
+      curl -sfo "${WORKSPACE}/attachments/admin/${ATT_FILENAME}" "$ATT_URL" || echo "    WARNING: Failed to download ${ATT_FILENAME}"
+    fi
+  done
+fi
+
 # ─── Format details from form ─────────────────────────────────────────────
 
 DETAILS_FORMATTED=""
@@ -124,6 +143,17 @@ fi
 ATTACHMENTS_LIST=""
 if [[ "$ATTACHMENT_COUNT" -gt 0 ]]; then
   ATTACHMENTS_LIST=$(echo "$ATTACHMENTS_JSON" | jq -r '.[] | "- attachments/" + .filename + " (" + .type + ", " + (.size | tostring) + " bytes)"' )
+fi
+
+ADMIN_ATTACHMENTS_LIST=""
+if [[ "$ADMIN_ATTACHMENT_COUNT" -gt 0 ]]; then
+  ADMIN_ATTACHMENTS_LIST=$(echo "$ADMIN_ATTACHMENTS_JSON" | jq -r '.[] | "- attachments/admin/" + .filename + " (" + .type + ", " + (.size | tostring) + " bytes)"')
+fi
+
+ADMIN_NOTES_FORMATTED=""
+ADMIN_NOTES_COUNT=$(echo "$ADMIN_NOTES_JSON" | jq 'length')
+if [[ "$ADMIN_NOTES_COUNT" -gt 0 ]]; then
+  ADMIN_NOTES_FORMATTED=$(echo "$ADMIN_NOTES_JSON" | jq -r '.[] | "### " + .created_at + "\n" + .content + "\n"')
 fi
 
 # ─── Generate CLAUDE.md ────────────────────────────────────────────────────
@@ -163,6 +193,10 @@ ${DETAILS_FORMATTED:-Brak danych z formularza.}
 
 ${ATTACHMENTS_LIST:-Brak zalacznikow.}
 
+## Materialy admina
+
+${ADMIN_ATTACHMENTS_LIST:-Brak materialow admina.}
+
 ## Brief
 
 ${BRIEF:-Brak briefu.}
@@ -180,6 +214,10 @@ ${MISSING_INFO:-Brak.}
 ## Zalecane akcje
 
 ${RECOMMENDED_ACTIONS:-Brak.}
+
+## Notatki admina
+
+${ADMIN_NOTES_FORMATTED:-Brak notatek.}
 
 ## Co juz zrobilismy
 
